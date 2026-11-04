@@ -153,6 +153,6 @@ Entrada: 60 min, 0 min, 30 s/unitat, 150 totals, 150 bones.
 - Bones > totals → `goodExceedsTotal`.
 - Parades > planificat → `downtimeExceedsPlanned`.
 - Planificat 0 (i parades 0) → `plannedTimeZero`. Si les totals també són 0, s'hi afegeix `totalUnitsZero`. El temps operatiu 0 amb planificat 0 no afegeix `operatingTimeZero`.
-- Planificat &gt; 0 i parades iguals al planificat → `operatingTimeZero`.
+- Planificat > 0 i parades iguals al planificat → `operatingTimeZero`.
 - Totals 0 i bones 0, amb la resta vàlida → `totalUnitsZero`.
 - Cicle 0 amb la resta vàlida → resultat vàlid, R = 0.0 %, OEE = 0.0 %.
