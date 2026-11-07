@@ -9,7 +9,9 @@ const Key totalUnitsKey = Key('totalUnits');
 const Key goodUnitsKey = Key('goodUnits');
 
 class OeeForm extends StatefulWidget {
-  const OeeForm({super.key});
+  const OeeForm({super.key, this.onOpenMap});
+
+  final VoidCallback? onOpenMap;
 
   @override
   State<OeeForm> createState() => _OeeFormState();
@@ -40,7 +42,16 @@ class _OeeFormState extends State<OeeForm> {
   Widget build(BuildContext context) {
     final model = _evaluate();
     return Scaffold(
-      appBar: AppBar(title: const Text('Calculador OEE')),
+      appBar: AppBar(
+        title: const Text('Calculador OEE'),
+        actions: [
+          if (widget.onOpenMap != null)
+            TextButton(
+              onPressed: widget.onOpenMap,
+              child: const Text('Mapa ISA-95'),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,

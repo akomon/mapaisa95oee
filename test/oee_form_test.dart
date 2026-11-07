@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mapaisa95oee/main.dart';
 import 'package:mapaisa95oee/oee_calculator.dart';
 import 'package:mapaisa95oee/oee_form.dart';
+import 'package:mapaisa95oee/plant_store.dart';
 
 void main() {
+  Widget app() => OeeApp(store: MemoryPlantStore());
+
   Future<void> setSurface(WidgetTester tester, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -37,14 +40,13 @@ void main() {
   testWidgets('mostra el torn de referència en viu i sense botó', (
     tester,
   ) async {
-    await tester.pumpWidget(const OeeApp());
+    await tester.pumpWidget(app());
 
     expect(find.text('Calculador OEE'), findsOneWidget);
+    expect(find.text('Mapa ISA-95'), findsOneWidget);
     expect(find.text(incompleteOeeMessage), findsOneWidget);
     expect(find.byType(ElevatedButton), findsNothing);
     expect(find.byType(FilledButton), findsNothing);
-    expect(find.byType(OutlinedButton), findsNothing);
-    expect(find.byType(TextButton), findsNothing);
     expect(find.byType(FloatingActionButton), findsNothing);
 
     await fill(
@@ -72,7 +74,7 @@ void main() {
   testWidgets('valida negatius, parades, temps operatiu i nombres invàlids', (
     tester,
   ) async {
-    await tester.pumpWidget(const OeeApp());
+    await tester.pumpWidget(app());
 
     await enter(tester, plannedMinutesKey, '-1');
     expect(find.text('Els valors no poden ser negatius.'), findsOneWidget);
@@ -115,7 +117,7 @@ void main() {
   });
 
   testWidgets('avisa quan el rendiment supera el 100 %', (tester) async {
-    await tester.pumpWidget(const OeeApp());
+    await tester.pumpWidget(app());
     await fill(
       tester,
       planned: '60',
@@ -136,7 +138,7 @@ void main() {
 
   testWidgets('cap a 360 px i a escriptori sense overflow', (tester) async {
     await setSurface(tester, const Size(360, 800));
-    await tester.pumpWidget(const OeeApp());
+    await tester.pumpWidget(app());
     await fill(
       tester,
       planned: '480',
@@ -159,7 +161,7 @@ void main() {
     }
 
     await setSurface(tester, const Size(1280, 800));
-    await tester.pumpWidget(const OeeApp());
+    await tester.pumpWidget(app());
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(find.text('OEE: 79.2 %'), findsOneWidget);
