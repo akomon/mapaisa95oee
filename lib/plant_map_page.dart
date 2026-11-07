@@ -22,12 +22,14 @@ class PlantMapPage extends StatefulWidget {
     super.key,
     required this.store,
     this.onOpenOee,
+    this.onOpenData,
     this.exportJson,
     this.importJson,
   });
 
   final PlantStore store;
   final VoidCallback? onOpenOee;
+  final VoidCallback? onOpenData;
   final PlantJsonExporter? exportJson;
   final PlantJsonImporter? importJson;
 
@@ -308,6 +310,14 @@ class _PlantMapPageState extends State<PlantMapPage>
                               onPressed: _import,
                               child: const Text('Importa JSON'),
                             ),
+                            if (widget.onOpenData != null)
+                              OutlinedButton(
+                                style: const ButtonStyle(
+                                  minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+                                ),
+                                onPressed: widget.onOpenData,
+                                child: const Text('Dades locals'),
+                              ),
                           ],
                         ),
                       ),

@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  idb_shim: ^2.11.2
   shared_preferences: ^2.5.6
   web: ^1.1.2
 
