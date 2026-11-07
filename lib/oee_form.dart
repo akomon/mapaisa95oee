@@ -9,9 +9,10 @@ const Key totalUnitsKey = Key('totalUnits');
 const Key goodUnitsKey = Key('goodUnits');
 
 class OeeForm extends StatefulWidget {
-  const OeeForm({super.key, this.onOpenMap});
+  const OeeForm({super.key, this.onOpenMap, this.onOpenData});
 
   final VoidCallback? onOpenMap;
+  final VoidCallback? onOpenData;
 
   @override
   State<OeeForm> createState() => _OeeFormState();
@@ -62,6 +63,16 @@ class _OeeFormState extends State<OeeForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.onOpenData != null) ...[
+                    OutlinedButton(
+                      style: const ButtonStyle(
+                        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+                      ),
+                      onPressed: widget.onOpenData,
+                      child: const Text('Dades locals'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _NumberField(
                     fieldKey: plannedMinutesKey,
                     controller: _planned,
