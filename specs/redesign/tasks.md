@@ -57,21 +57,21 @@ Extretes de [spec.md](spec.md), secció 13. Aquesta actualització es commita ab
 
 ## T6 — Reconciliació legacy
 
-- [ ] Camp opcionals `latestLegacyRaw` i `reconciledLegacyRaw`, sense pujar `formatVersion`.
-- [ ] Fusió física no destructiva: sense promoció, sense orfes, sense tocar snapshots ni OEE.
-- [ ] Clau apareguda després del primer arrencada, clau divergent i clau il·legible.
-- [ ] La còpia rodona inclou el treball canònic, l'original i el text més recent.
-- [ ] Cap escriptura de `mapaisa95oee.plant.v1`.
+- [x] Camp opcionals `latestLegacyRaw` i `reconciledLegacyRaw`, sense pujar `formatVersion`.
+- [x] Fusió física no destructiva: sense promoció, sense orfes, sense tocar snapshots ni OEE.
+- [x] Clau apareguda després del primer arrencada, clau divergent i clau il·legible.
+- [x] La còpia rodona inclou el treball canònic, l'original i el text més recent.
+- [x] Cap escriptura de `mapaisa95oee.plant.v1`.
 
 ## T7 — Inventari, mapa i fluxos manuals
 
-- [ ] Arbre, mapa IT/OT amb franja L3 explicada, inspector i barra, visibles alhora a 1280 × 800.
-- [ ] CRUD amb missatge al camp, ID estable, pare incompatible, cicle i confirmació d'esborrat.
-- [ ] ERP o MES amb abast doble; l'organització sense selector L0–L4.
-- [ ] Flux manual amb extrems, dades, protocol o desconegut, finalitat i estat explícit. Cap flux inventat des de l'abast.
-- [ ] Exemple alimentari sense empresa = L4 ni línia = L2.
-- [ ] 360 px, teclat, focus visible, 48 dp i estat amb text.
-- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real.
+- [x] Arbre, mapa IT/OT amb franja L3 explicada, inspector i barra, visibles alhora a 1280 × 800.
+- [x] CRUD amb missatge al camp, ID estable, pare incompatible, cicle i confirmació d'esborrat.
+- [x] ERP o MES amb abast doble; l'organització sense selector L0–L4.
+- [x] Flux manual amb extrems, dades, protocol o desconegut, finalitat i estat explícit. Cap flux inventat des de l'abast.
+- [x] Exemple alimentari sense empresa = L4 ni línia = L2.
+- [x] 360 px, teclat, focus visible, 48 dp i estat amb text.
+- [x] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real.
 
 ## Fora de la PR B
 

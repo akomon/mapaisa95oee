@@ -7,6 +7,7 @@ import 'plant_map_page.dart';
 import 'plant_store.dart';
 import 'workspace_idb.dart';
 import 'workspace_idb_factory.dart';
+import 'workspace_page.dart';
 import 'workspace_repository.dart';
 
 Future<void> main() async {
@@ -58,12 +59,15 @@ class _OeeAppState extends State<OeeApp> {
         ),
       ),
       home: switch (_screen) {
+        _Screen.map when workspace != null => WorkspacePage(
+          repository: workspace,
+          onOpenOee: () => setState(() => _screen = _Screen.oee),
+          onOpenData: () => setState(() => _screen = _Screen.data),
+        ),
         _Screen.map => PlantMapPage(
           store: widget.store,
           onOpenOee: () => setState(() => _screen = _Screen.oee),
-          onOpenData: workspace == null
-              ? null
-              : () => setState(() => _screen = _Screen.data),
+          onOpenData: null,
         ),
         _Screen.data when workspace != null => DataFoundationPage(
           repository: workspace,
