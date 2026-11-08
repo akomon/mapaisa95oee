@@ -40,8 +40,42 @@ Extretes de [spec.md](spec.md). La spec es commita abans de qualsevol codi. Les 
 
 ## Fora d'aquesta PR
 
-- [ ] PR B: espai de treball, inventari, mapa IT/OT i fluxos manuals.
+- [x] PR B: espai de treball, inventari, mapa IT/OT i fluxos manuals. El detall executable és la llista següent.
 - [ ] PR C: plantilles, suggeriments, esquemes múltiples a la UI, snapshots i restauració (AC-11).
+- [ ] PR D: motor OEE de la secció 5.
+- [ ] PR E: històric i filtres.
+- [ ] QA integrada d'R6.
+
+# Tasques: espai de treball (PR B)
+
+Extretes de [spec.md](spec.md), secció 13. Aquesta actualització es commita abans del codi de la PR B.
+
+## T5 — Spec de la PR B
+
+- [x] Afegir a `specs/redesign/` la traça de B, el contracte de reconciliació i el que queda diferit.
+- [x] Commit de la spec abans del codi de l'espai.
+
+## T6 — Reconciliació legacy
+
+- [ ] Camp opcionals `latestLegacyRaw` i `reconciledLegacyRaw`, sense pujar `formatVersion`.
+- [ ] Fusió física no destructiva: sense promoció, sense orfes, sense tocar snapshots ni OEE.
+- [ ] Clau apareguda després del primer arrencada, clau divergent i clau il·legible.
+- [ ] La còpia rodona inclou el treball canònic, l'original i el text més recent.
+- [ ] Cap escriptura de `mapaisa95oee.plant.v1`.
+
+## T7 — Inventari, mapa i fluxos manuals
+
+- [ ] Arbre, mapa IT/OT amb franja L3 explicada, inspector i barra, visibles alhora a 1280 × 800.
+- [ ] CRUD amb missatge al camp, ID estable, pare incompatible, cicle i confirmació d'esborrat.
+- [ ] ERP o MES amb abast doble; l'organització sense selector L0–L4.
+- [ ] Flux manual amb extrems, dades, protocol o desconegut, finalitat i estat explícit. Cap flux inventat des de l'abast.
+- [ ] Exemple alimentari sense empresa = L4 ni línia = L2.
+- [ ] 360 px, teclat, focus visible, 48 dp i estat amb text.
+- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real.
+
+## Fora de la PR B
+
+- [ ] PR C: plantilles, suggeriments assistits, esquemes múltiples i restauració.
 - [ ] PR D: motor OEE de la secció 5.
 - [ ] PR E: històric i filtres.
 - [ ] QA integrada d'R6.
