@@ -10,6 +10,7 @@ const Key backupJsonFieldKey = Key('backupJsonField');
 const Key prepareReplaceKey = Key('prepareReplace');
 const Key exportBackupKey = Key('exportBackup');
 const Key downloadLegacyKey = Key('downloadLegacy');
+const Key downloadLatestLegacyKey = Key('downloadLatestLegacy');
 const Key loadFoodExampleKey = Key('loadFoodExample');
 const Key confirmReplaceKey = Key('confirmReplace');
 const Key cancelReplaceKey = Key('cancelReplace');
@@ -220,7 +221,7 @@ class _DataFoundationPageState extends State<DataFoundationPage> {
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'El mapa ISA-95 antic continua desant a la clau legacy i no actualitza aquest model.',
+                        'La clau legacy no s\'esborra ni es reescriu. Si el text divergeix, es reconcilia amb el model canònic sense promoure nivells antics i sense modificar instantànies ni registres OEE.',
                       ),
                     ),
                   const SizedBox(height: 12),
@@ -281,6 +282,16 @@ class _DataFoundationPageState extends State<DataFoundationPage> {
                             repository.recoverableLegacyRaw!,
                           ),
                           child: const Text('Descarrega la còpia legacy'),
+                        ),
+                      if (workspace.latestLegacyRaw != null)
+                        OutlinedButton(
+                          key: downloadLatestLegacyKey,
+                          style: touchButtonStyle,
+                          onPressed: () => _export(
+                            'mapaisa95oee-legacy-latest.json',
+                            workspace.latestLegacyRaw!,
+                          ),
+                          child: const Text('Descarrega el legacy més recent'),
                         ),
                       OutlinedButton(
                         key: loadFoodExampleKey,

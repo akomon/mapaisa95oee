@@ -467,6 +467,8 @@ class Workspace {
     List<OeeRecord> oeeRecords = const [],
     List<MigrationReview> migrationReviews = const [],
     this.legacyRaw,
+    this.latestLegacyRaw,
+    this.reconciledLegacyRaw,
   }) : organizations = List.unmodifiable(organizations),
        assets = List.unmodifiable(assets),
        systems = List.unmodifiable(systems),
@@ -486,6 +488,8 @@ class Workspace {
   final List<OeeRecord> oeeRecords;
   final List<MigrationReview> migrationReviews;
   final String? legacyRaw;
+  final String? latestLegacyRaw;
+  final String? reconciledLegacyRaw;
 
   bool get hasDomainData {
     return organizations.isNotEmpty ||
@@ -510,6 +514,10 @@ class Workspace {
     List<MigrationReview>? migrationReviews,
     String? legacyRaw,
     bool clearLegacyRaw = false,
+    String? latestLegacyRaw,
+    bool clearLatestLegacyRaw = false,
+    String? reconciledLegacyRaw,
+    bool clearReconciledLegacyRaw = false,
   }) {
     return Workspace(
       nextIdCounter: nextIdCounter ?? this.nextIdCounter,
@@ -522,6 +530,12 @@ class Workspace {
       oeeRecords: oeeRecords ?? this.oeeRecords,
       migrationReviews: migrationReviews ?? this.migrationReviews,
       legacyRaw: clearLegacyRaw ? null : (legacyRaw ?? this.legacyRaw),
+      latestLegacyRaw: clearLatestLegacyRaw
+          ? null
+          : (latestLegacyRaw ?? this.latestLegacyRaw),
+      reconciledLegacyRaw: clearReconciledLegacyRaw
+          ? null
+          : (reconciledLegacyRaw ?? this.reconciledLegacyRaw),
     );
   }
 }
@@ -1248,6 +1262,70 @@ WorkspaceMutation updateSystemScope(
   );
 }
 
+WorkspaceMutation updateSystem(
+  Workspace workspace, {
+  required String id,
+  required String name,
+  String? description,
+  SystemType? systemType,
+  IconKey? iconKey,
+  List<String>? scopeIds,
+  List<IsaFunction>? functions,
+  ItOtZone? zone,
+  required DateTime now,
+}) {
+  final current = findSystem(workspace, id);
+  final issues = <WorkspaceIssue>[];
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    );
+  }
+  if (current == null) {
+    issues.add(WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: id));
+    return _failure(issues);
+  }
+  final icon = iconKey ?? current.iconKey;
+  if (!systemIconKeys.contains(icon)) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.invalidField, field: 'iconKey'),
+    );
+  }
+  List<IsaFunction>? normalized;
+  if (functions != null) {
+    normalized = _normalizeFunctions(functions, issues);
+  }
+  List<String>? scope;
+  if (scopeIds != null) {
+    scope = _normalizeScope(workspace, scopeIds, issues);
+  }
+  if (issues.isNotEmpty) {
+    return _failure(issues);
+  }
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      systems: [
+        for (final system in workspace.systems)
+          if (system.id == id)
+            system.copyWith(
+              name: trimmed,
+              description: normalizeOptionalText(description),
+              clearDescription: normalizeOptionalText(description) == null,
+              systemType: systemType,
+              iconKey: icon,
+              scopeIds: scope,
+              functions: normalized,
+              zone: zone,
+              updatedAt: asUtc(now),
+            )
+          else
+            system,
+      ],
+    ),
+  );
+}
+
 WorkspaceMutation updateSystemIcon(
   Workspace workspace, {
   required String id,
@@ -1346,6 +1424,81 @@ WorkspaceMutation addFlow(
   );
 }
 
+WorkspaceMutation updateFlow(
+  Workspace workspace, {
+  required String id,
+  required String name,
+  String? description,
+  required String sourceId,
+  required String targetId,
+  required String exchangedData,
+  String? protocol,
+  required String purpose,
+  required FlowStatus status,
+  required DateTime now,
+}) {
+  final current = findFlow(workspace, id);
+  final issues = <WorkspaceIssue>[];
+  if (current == null) {
+    issues.add(WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: id));
+  }
+  final trimmed = name.trim();
+  final data = exchangedData.trim();
+  final goal = purpose.trim();
+  if (trimmed.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    );
+  }
+  if (data.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(
+        WorkspaceIssueCode.invalidField,
+        field: 'exchangedData',
+      ),
+    );
+  }
+  if (goal.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.invalidField, field: 'purpose'),
+    );
+  }
+  final normalizedProtocol = normalizeOptionalText(protocol);
+  if (protocol != null && normalizedProtocol == null) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.invalidField, field: 'protocol'),
+    );
+  }
+  _checkEndpoint(workspace, sourceId, 'sourceId', issues);
+  _checkEndpoint(workspace, targetId, 'targetId', issues);
+  if (issues.isNotEmpty || current == null) {
+    return _failure(issues);
+  }
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      flows: [
+        for (final flow in workspace.flows)
+          if (flow.id == id)
+            ExchangeFlow(
+              id: flow.id,
+              name: trimmed,
+              description: normalizeOptionalText(description),
+              sourceId: sourceId,
+              targetId: targetId,
+              exchangedData: data,
+              protocol: normalizedProtocol,
+              purpose: goal,
+              status: status,
+              createdAt: flow.createdAt,
+              updatedAt: asUtc(now),
+            )
+          else
+            flow,
+      ],
+    ),
+  );
+}
+
 WorkspaceMutation confirmFlow(
   Workspace workspace, {
   required String id,
@@ -1365,6 +1518,100 @@ WorkspaceMutation confirmFlow(
             flow.copyWith(status: FlowStatus.confirmed, updatedAt: asUtc(now))
           else
             flow,
+      ],
+    ),
+  );
+}
+
+WorkspaceMutation linkToSchema(
+  Workspace workspace, {
+  required String schemaId,
+  String? assetId,
+  String? systemId,
+  String? flowId,
+  LayoutPoint? at,
+  required DateTime now,
+}) {
+  final schema = workspace.schemas
+      .where((item) => item.id == schemaId)
+      .firstOrNull;
+  if (schema == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId),
+    ]);
+  }
+  final issues = <WorkspaceIssue>[];
+  if (at != null && (!at.x.isFinite || !at.y.isFinite)) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.invalidField, field: 'layout'),
+    );
+  }
+  if (assetId != null && findAsset(workspace, assetId) == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.orphanReference,
+        field: 'assetIds',
+        entityId: assetId,
+      ),
+    );
+  }
+  if (systemId != null && findSystem(workspace, systemId) == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.orphanReference,
+        field: 'systemIds',
+        entityId: systemId,
+      ),
+    );
+  }
+  if (flowId != null && findFlow(workspace, flowId) == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.orphanReference,
+        field: 'flowIds',
+        entityId: flowId,
+      ),
+    );
+  }
+  if (issues.isNotEmpty) {
+    return _failure(issues);
+  }
+  final asset = assetId == null ? null : findAsset(workspace, assetId);
+  List<String> append(List<String> values, String? id) {
+    if (id == null || values.contains(id)) {
+      return values;
+    }
+    return [...values, id];
+  }
+
+  final layout = Map<String, LayoutPoint>.of(schema.layout);
+  void put(String? id) {
+    if (id != null && at != null) {
+      layout[id] = at;
+    }
+  }
+
+  put(assetId);
+  put(systemId);
+  put(flowId);
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      schemas: [
+        for (final item in workspace.schemas)
+          if (item.id == schemaId)
+            item.copyWith(
+              plantIds: append(
+                schema.plantIds,
+                asset?.kind == AssetKind.plant ? assetId : null,
+              ),
+              assetIds: append(schema.assetIds, assetId),
+              systemIds: append(schema.systemIds, systemId),
+              flowIds: append(schema.flowIds, flowId),
+              layout: layout,
+              updatedAt: asUtc(now),
+            )
+          else
+            item,
       ],
     ),
   );

@@ -653,3 +653,71 @@ No es fusiona res sense decisió de Mon. Si una PR creix fins a barrejar etapes,
 ## 12. Fora d'aquesta PR
 
 PR B, C, D i E, el redisseny visual, les plantilles, la descoberta assistida, la restauració de versions, el motor i el pastís de la secció 5, els filtres d'històric, l'agregació, el PDF, el backend i qualsevol lectura de la xarxa.
+
+La columna «Aquesta PR» de la secció 11 descriu només la PR A. L'estat que tanca la PR B és la secció 13. No es reobren les decisions de la secció 8.
+
+## 13. PR B — espai de treball, inventari i fluxos manuals
+
+Aquesta secció és el contracte de la PR B. No afegeix requisits de producte. Tanca la part de UI que la secció 11 deixava per a B i resol el risc de divergència de la secció 7.3. La maqueta aprovada és direcció de composició, densitat i material. Els textos i les dades que s'hi veuen són il·lustratius. Si un rètol de la maqueta contradiu aquesta SPEC, mana la SPEC: l'organització no és L4 ni un ERP, una línia no és L2, un tipus de sistema no assigna funcions ni zona, i un abast compartit no crea un flux.
+
+### 13.1 Què es tanca i què es deixa
+
+| AC | PR B |
+| --- | --- |
+| AC-01 | Tancat a la UI: alta, edició i baixa d'organització, planta, àrea, línia i màquina, amb nom i icona, missatge al camp, i ID estable en reanomenar. |
+| AC-02 | Tancat a la UI: alta d'ERP o MES amb abast a dues plantes o línies i funcions independents. Editar l'abast no canvia cap `parentId`. L'organització no mostra selector L0–L4 ni conversió a ERP. |
+| AC-03 | Tancat a la UI: abans d'eliminar amb fills, abasts o fluxos es mostren les dependències i cal confirmar. Cancel·lar no escriu. No queden orfes actius. Els snapshots i els registres OEE no s'esborren. |
+| AC-04 | Tancat: a 1280 × 800 l'arbre, el mapa IT/OT amb la franja L3 explicada i l'inspector es veuen alhora. Canviar la selecció no canvia la planta ni l'esquema actius. |
+| AC-05 | Diferit a la PR C. El model ja impedeix que la icona assigni funcions o fluxos. La PR B no aplica plantilles. |
+| AC-06 | Tancat el flux manual: origen i destí vàlids, dades, protocol o desconegut, finalitat i estat explícit `suggested` o `confirmed`. Confirmar és una acció sobre aquell flux. Descartar l'elimina amb les regles d'AC-03. No hi ha suggeriments automàtics ni lectura de xarxa. La descoberta assistida queda a la PR C. |
+| AC-07 | Parcial: l'exemple alimentari s'obre al mapa sense empresa = L4 ni línia = L2. La planta i l'esquema actius es conserven. Crear, copiar o restaurar esquemes múltiples queda a la PR C. Si el document ja en té més d'un, un selector canvia l'actiu sense crear-ne ni restaurar-ne. |
+| AC-08 | Es conserva. L'espai nou mostra els mateixos textos de desament. Una edició del mapa nou escriu el document d'IndexedDB. |
+| AC-09, AC-10 | Es conserven. La còpia exportada inclou el treball canònic vigent i els textos legacy de la secció 13.2. |
+| AC-11 | Diferit a la PR C. La barra mostra el recompte d'instantànies. No hi ha botó de crear ni de restaurar. |
+| AC-12…AC-18 | Diferits a les PR D i E. El calculador US-1 es conserva i s'obre des de l'espai. No es pinten indicadors inventats. |
+| AC-19 | Es conserva i s'estén amb la reconciliació de la secció 13.2. Cap nivell antic es promou. |
+| AC-20 | Tancat per a l'espai de treball: 360 px amb arbre i inspector desplegables, formularis en una columna, zoom, desplaçament i enquadrament del mapa, teclat per seleccionar, editar, confirmar i cancel·lar, focus visible, objectius de 48 dp i estat amb text. |
+| AC-21 | Parcial d'aquesta PR: anàlisi, tests, build web i Chrome real de l'abast B. La passada integrada d'R6 continua fora. |
+
+Fora de la PR B: plantilles, suggeriments assistits, gestió de múltiples esquemes, snapshots editables, restauració, motor OEE de la secció 5, històric i filtres, agregació, PDF, backend i qualsevol lectura de la xarxa. La SPEC sencera no queda tancada.
+
+### 13.2 Reconciliació no destructiva del legacy
+
+El mapa antic deixa d'estar muntat quan hi ha repositori de workspace. L'app no el torna a escriure. La clau `mapaisa95oee.plant.v1` continua sense `setString`, `remove` ni `clear`.
+
+El document `formatVersion` 1 guanya dos camps opcionals. Si no hi són, valen `null`. No és una versió nova de format: les còpies de la PR A es continuen llegint.
+
+| Camp | Sentit |
+| --- | --- |
+| `legacyRaw` | Text original capturat. Un cop té valor, no es substitueix. |
+| `latestLegacyRaw` | Darrer text de la clau diferent de l'original. `null` si encara no n'hi ha hagut. |
+| `reconciledLegacyRaw` | Darrer text legacy que ja s'ha intentat reconciliar amb èxit de projecció. No forma part del diagrama de la secció 2.4 perquè només evita repetir la fusió; la còpia el conserva perquè la represa sigui estable. |
+
+En obrir, si ja hi ha `workspace`:
+
+1. Si la clau és buida, igual a `legacyRaw` sense cap reconciliació prèvia, o igual a `reconciledLegacyRaw`, no es torna a projectar.
+2. Si el text nou no passa `migrateLegacyPlant`, no es canvien entitats, snapshots ni OEE. Es desa el text a `latestLegacyRaw`. L'estat visible és error, no `Desat`. L'original es conserva.
+3. Si el text és projectable, es fusiona sobre una còpia del workspace. No es substitueix el document.
+4. La projecció només aporta organitzacions i actius físics, amb funcions buides i icona del tipus físic. No crea sistemes, fluxos, esquemes, versions ni registres OEE. No escriu `functions`, tipus ni zona a partir de `functionalLevel`. `promoted` continua sent `false`.
+5. Un ID nou s'afegeix amb la jerarquia estricta. Si el pare no existeix o no és compatible, no s'afegeix i no queda un orfe actiu.
+6. Un ID que ja existeix com a organització o actiu del mateix paper només rep nom, descripció o pare nous si el valor canònic encara és el de la línia base (`reconciledLegacyRaw` o, si no n'hi ha, `legacyRaw`). Si el model canònic ja ha divergit, es conserva el valor canònic. Funcions, icones, sistemes, fluxos i abasts canònics no es toquen.
+7. Un ID ocupat per una entitat d'un altre paper no es reescriu.
+8. Una absència al legacy nou no esborra res del model canònic.
+9. `nextIdCounter` no baixa.
+10. Les llistes de sistemes, fluxos, esquemes, versions i registres OEE queden les mateixes. El JSON d'instantànies i el d'OEE, abans i després, coincideixen.
+11. `legacyRaw` passa a ser el text només quan encara era `null` i la projecció és vàlida. Aquest primer text és l'original recuperable, també si la clau ha aparegut després d'un primer arrencada buit.
+12. La còpia descarregada inclou les entitats ja reconciliades, `legacyRaw` i `latestLegacyRaw`. Reimportar-la restitueix aquest treball. `priorBackup` d'una substitució anterior no s'escriu durant la reconciliació.
+
+La pantalla `Dades locals` descarrega l'original i, quan existeix, el text més recent. El mapa nou desa a IndexedDB. L'exportació posterior conté aquest desament.
+
+### 13.3 Espai de treball
+
+Estètica compacta industrial: rail antracita, panells d'acer i fons clar, accents discrets, contrast de text, icones amb etiqueta. A 1280 × 800 es veuen alhora l'arbre contextual, el mapa i l'inspector. La barra baixa té els controls del mapa, el recompte d'instantànies i l'estat de desament amb text.
+
+L'arbre és la jerarquia física més una llista de sistemes que no pengen de cap màquina. El mapa separa IT, la franja L3 i OT. La franja diu que és una convenció visual i que no classifica un MES ni cap producte. La posició d'un sistema surt de la zona declarada. Les funcions es llegeixen a l'etiqueta de la fitxa. Un sistema amb funcions L2 i L3 i zona IT roman a IT. Els actius no es col·loquen en un nivell pel seu tipus. Un actiu només entra al mapa si un flux el cita, en una franja que no és un nivell ISA-95.
+
+L'inspector edita la selecció en una columna: nom, descripció, icona, pare, funcions quan l'entitat les admet, abast, zona i fluxos. Els errors de nom buit, pare incompatible, cicle, extrem invàlid i protocol buit es mostren al camp. Els controls nous fan com a mínim 48 × 48 dp.
+
+A menys de 1100 px, i en concret a 360 px, l'arbre i l'inspector són panells que s'obren i es tanquen. El mapa continua muntat. Els formularis segueixen en una columna. El mapa es pot apropar, allunyar, desplaçar i enquadrar sense que arrossegar sigui l'única via. La selecció, l'edició, la confirmació i la cancel·lació es poden fer amb teclat. El focus es veu. Suggerit, confirmat, desat i error es llegeixen per text.
+
+Seleccionar una línia o un sistema no canvia la planta ni l'esquema actius. No cal una planta sencera per crear el primer element. El primer esquema existent, si n'hi ha, rep les altes noves perquè el mapa les pugui mostrar. Això no obre l'editor d'esquemes de la PR C.

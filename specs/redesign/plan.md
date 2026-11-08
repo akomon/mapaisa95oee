@@ -62,3 +62,53 @@ Després, servir el build web i comprovar al navegador la clau legacy, la recàr
 - `idb_shim` en memòria no és Chrome. La recàrrega real es comprova al navegador.
 - El calculador US-1 i les fórmules de la secció 5 conviuen fins a la PR D. No s'han d'unificar aquí.
 - Una quota esgotada depèn del navegador. El repositori tracta qualsevol excepció d'escriptura com a error i no marca `Desat`.
+
+# Pla: espai de treball (PR B)
+
+Spec: [spec.md](spec.md), secció 13. Tasques: [tasks.md](tasks.md).
+
+Aquesta PR és només la PR B. El codi es commita després d'aquesta actualització de la spec. No es implementen les PR C, D ni E.
+
+## Enfocament
+
+L'espai nou llegeix i escriu el workspace canònic a través del repositori. No es reutilitza `functionalLevel` ni la pantalla del mapa antic com a editor. `PlantMapPage` es conserva al repositori perquè les proves de la US-2 continuïn, però `main.dart` no la munta quan hi ha repositori.
+
+En obrir, si la clau legacy difereix del text ja reconciliat, `reconcileLegacyWorkspace` fusiona només la jerarquia física sobre una còpia. Les instantànies i l'OEE es passen per referència. La clau legacy no es rep cap escriptor.
+
+Les operacions noves de domini que la UI necessita, i que la PR A no exposava senceres, són `updateSystem`, `updateFlow` i `linkToSchema`. No creen esquemes addicionals ni versions.
+
+## Estructura
+
+```
+lib/legacy_reconciliation.dart   # fusió pura, sense Flutter
+lib/workspace_theme.dart          # antracita, acer, objectius de 48 dp
+lib/workspace_page.dart           # arbre, mapa, inspector, barra
+test/legacy_reconciliation_test.dart
+test/workspace_page_test.dart
+```
+
+Es toquen també el model, el codec, el repositori, `main.dart` i el text de `Dades locals` que encara deia que el mapa antic no actualitza el model.
+
+## Decisions d'aquesta PR
+
+- Un sol editor: el workspace. La clau legacy només es llegeix.
+- `formatVersion` es manté en 1. `latestLegacyRaw` i `reconciledLegacyRaw` són opcionals.
+- L'esquema actiu, si ja existeix, rep les altes. No hi ha gestor de plantilles ni de restauració.
+- El calculador US-1 no es modifica. L'inspector hi enllaça i no inventa percentatges.
+- La maqueta fixa la composició i la paleta. No fixa noms, nivells ni dades.
+
+## Verificació
+
+```
+flutter analyze
+flutter test
+flutter build web
+```
+
+Després, Chrome real a 1280 × 800 i a 360 px: densitat, flux manual, teclat, desar i recarregar, legacy divergent i clau tardana, còpia coherent, i el calculador US-1. La quota real del navegador només es reporta si es reprodueix. La fallada de quota continua coberta per la base en memòria.
+
+## Riscos
+
+- Una fusió amb conflicte conserva el canònic i el text cru. L'usuari ha de descarregar-lo per veure el detall no aplicat.
+- El mapa antic, si algú el construeix fora de `main.dart`, encara escriuria la clau. L'obertura següent el tornaria a reconciliar.
+- La maqueta mostra un pastís OEE i etiquetes de nivell que aquesta PR no ha de copiar.

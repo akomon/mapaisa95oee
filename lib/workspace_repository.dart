@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'legacy_migration.dart';
+import 'legacy_reconciliation.dart';
 import 'workspace_codec.dart';
 import 'workspace_database.dart';
 import 'workspace_model.dart';
@@ -76,9 +77,20 @@ class WorkspaceRepository extends ChangeNotifier {
           return;
         }
         workspace = parsed.workspace!;
-        status = SaveStatus.saved;
-        ready = true;
-        notifyListeners();
+        final reconciled = reconcileLegacyWorkspace(
+          workspace: workspace,
+          currentLegacy: legacy,
+          now: now,
+        );
+        if (!reconciled.changed) {
+          workspace = reconciled.workspace;
+          status = reconciled.rejected ? SaveStatus.error : SaveStatus.saved;
+          banner = reconciled.message;
+          ready = true;
+          notifyListeners();
+          return;
+        }
+        await _persistReconciled(reconciled);
         return;
       }
       if (legacy == null || legacy.isEmpty) {
@@ -153,8 +165,14 @@ class WorkspaceRepository extends ChangeNotifier {
     final prior = workspace.hasDomainData ? workspaceToJson(workspace) : null;
     final example = foodIndustryExample().copyWith(
       legacyRaw: workspace.legacyRaw ?? migrationLegacyRaw,
+      latestLegacyRaw: workspace.latestLegacyRaw,
+      reconciledLegacyRaw: workspace.reconciledLegacyRaw,
     );
     await _commit(example, priorJson: prior);
+  }
+
+  Future<void> saveWorkspace(Workspace next) {
+    return _commit(next);
   }
 
   Future<void> acknowledge(String id) async {
@@ -200,6 +218,51 @@ class WorkspaceRepository extends ChangeNotifier {
     status = SaveStatus.saved;
     banner = null;
     quotaExceeded = false;
+    ready = true;
+    notifyListeners();
+  }
+
+  Future<void> _persistReconciled(LegacyReconciliation reconciled) async {
+    final previous = workspace;
+    final encoded = workspaceToJson(reconciled.workspace);
+    final checked = workspaceFromJson(encoded);
+    if (!checked.isValid || checked.workspace == null) {
+      status = SaveStatus.error;
+      banner = legacyRejectedMessage;
+      ready = true;
+      notifyListeners();
+      return;
+    }
+    status = SaveStatus.saving;
+    banner = null;
+    quotaExceeded = false;
+    notifyListeners();
+    final adopted =
+        previous.legacyRaw == null && checked.workspace!.legacyRaw != null;
+    final nextMigrationStatus = adopted ? 'migrated' : migrationStatus;
+    try {
+      await database.write({
+        workspaceDocumentKey: encoded,
+        migrationStateKey: _migrationJson(
+          statusName: nextMigrationStatus,
+          legacyRaw: checked.workspace!.legacyRaw,
+          messages: [
+            if (reconciled.rejected) legacyRejectedMessage,
+            if (reconciled.conflictIds.isNotEmpty)
+              'Conflictes: ${reconciled.conflictIds.join(', ')}',
+          ],
+        ),
+      });
+      workspace = checked.workspace!;
+      migrationStatus = nextMigrationStatus;
+      migrationLegacyRaw = checked.workspace!.legacyRaw;
+      status = reconciled.rejected ? SaveStatus.error : SaveStatus.saved;
+      banner = reconciled.message;
+      quotaExceeded = false;
+    } catch (error) {
+      workspace = previous;
+      _markWriteFailed(error);
+    }
     ready = true;
     notifyListeners();
   }

@@ -60,6 +60,8 @@ String _encode(Workspace workspace, {required DateTime? exportedAt}) {
       for (final item in workspace.migrationReviews) _reviewToJson(item),
     ],
     'legacyRaw': workspace.legacyRaw,
+    'latestLegacyRaw': workspace.latestLegacyRaw,
+    'reconciledLegacyRaw': workspace.reconciledLegacyRaw,
   };
   return const JsonEncoder.withIndent('  ').convert(map);
 }
@@ -238,6 +240,11 @@ WorkspaceImport workspaceFromJson(String raw) {
   final records = parser.records(decoded['oeeRecords']);
   final reviews = parser.reviews(decoded['migrationReviews']);
   final legacyRaw = parser.legacyRaw(decoded['legacyRaw']);
+  final latestLegacyRaw = parser.optionalLegacy(decoded, 'latestLegacyRaw');
+  final reconciledLegacyRaw = parser.optionalLegacy(
+    decoded,
+    'reconciledLegacyRaw',
+  );
   if (parser.failed || counter == null) {
     return parser.finish();
   }
@@ -282,6 +289,8 @@ WorkspaceImport workspaceFromJson(String raw) {
       oeeRecords: records,
       migrationReviews: reviews,
       legacyRaw: legacyRaw,
+      latestLegacyRaw: latestLegacyRaw,
+      reconciledLegacyRaw: reconciledLegacyRaw,
     ),
   );
 }
@@ -1052,6 +1061,18 @@ class _Parser {
       return value;
     }
     add(WorkspaceIssueCode.invalidField, field: 'legacyRaw');
+    return null;
+  }
+
+  String? optionalLegacy(Map<String, dynamic> map, String field) {
+    if (!map.containsKey(field) || map[field] == null) {
+      return null;
+    }
+    final value = map[field];
+    if (value is String) {
+      return value.isEmpty ? null : value;
+    }
+    add(WorkspaceIssueCode.invalidField, field: field);
     return null;
   }
 
