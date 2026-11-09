@@ -160,22 +160,22 @@ test/oee_history_panel_test.dart
 
 ## T17 — Domini
 
-- [ ] Desar esborrany i validat amb `c` congelat i noms capturats.
-- [ ] El validat és immutable. La correcció crea una revisió i conserva l'original.
-- [ ] Filtres, inclosos els extrems de data, torn, article, lot buit i línia retirada o reanomenada.
-- [ ] La vista per defecte exclou esborranys i no agrega.
-- [ ] La còpia rodona i la restauració no muten l'OEE.
+- [x] Desar esborrany i validat amb `c` congelat i noms capturats.
+- [x] El validat és immutable. La correcció crea una revisió i conserva l'original.
+- [x] Filtres, inclosos els extrems de data, torn, article, lot buit i línia retirada o reanomenada.
+- [x] La vista per defecte exclou esborranys i no agrega.
+- [x] La còpia rodona i la restauració no muten l'OEE.
 
 ## T18 — Pantalla
 
-- [ ] Alternar càlcul i històric a la línia. La barra obre l'històric sense línia.
-- [ ] Obrir un registre amb entrades, estat, indicadors i pastís vàlid.
-- [ ] 48 dp, focus visible, teclat i 360 px.
-- [ ] El torn US-1 segueix a `79.2 %`. La pantalla solta no desa.
+- [x] Alternar càlcul i històric a la línia. La barra obre l'històric sense línia.
+- [x] Obrir un registre amb entrades, estat, indicadors i pastís vàlid.
+- [x] 48 dp, focus visible, teclat i 360 px.
+- [x] El torn US-1 segueix a `79.2 %`. La pantalla solta no desa.
 
 ## T19 — Verificació
 
-- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome a 1280 × 800 i 360 px.
+- [x] `flutter analyze`, `flutter test`, `flutter build web` i Chrome a 1280 × 800 i 360 px.
 
 ## Fora de la PR E
 

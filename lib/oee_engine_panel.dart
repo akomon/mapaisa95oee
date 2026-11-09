@@ -15,6 +15,8 @@ const Key engineUnitSecondsKey = Key('engineUnitSeconds');
 const Key engineUnitRateKey = Key('engineUnitRate');
 const Key enginePieKey = Key('enginePie');
 const Key engineResultKey = Key('engineResult');
+const Key saveOeeDraftKey = Key('saveOeeDraft');
+const Key saveOeeValidatedKey = Key('saveOeeValidated');
 
 class OeeEnginePage extends StatelessWidget {
   const OeeEnginePage({
@@ -87,9 +89,26 @@ class OeeEnginePage extends StatelessWidget {
 }
 
 class OeeEnginePanel extends StatefulWidget {
-  const OeeEnginePanel({super.key, this.lineName});
+  const OeeEnginePanel({
+    super.key,
+    this.lineName,
+    this.seed,
+    this.seedToken = 0,
+    this.onSaveDraft,
+    this.onSaveValidated,
+    this.draftLabel = 'Desa esborrany',
+    this.validateLabel = 'Valida',
+  });
 
   final String? lineName;
+  final OeeRecord? seed;
+  final int seedToken;
+  final void Function(OeeEngineInputs inputs)? onSaveDraft;
+  final void Function(OeeEngineInputs inputs)? onSaveValidated;
+  final String draftLabel;
+  final String validateLabel;
+
+  bool get storesRecords => onSaveDraft != null || onSaveValidated != null;
 
   @override
   State<OeeEnginePanel> createState() => _OeeEnginePanelState();
@@ -103,9 +122,47 @@ class _OeeEnginePanelState extends State<OeeEnginePanel> {
   final TextEditingController _good = TextEditingController();
   final FocusNode _plannedFocus = FocusNode();
   final FocusNode _unitRateFocus = FocusNode();
+  final FocusNode _draftFocus = FocusNode();
+  final FocusNode _validateFocus = FocusNode();
 
   SpeedUnit _unit = SpeedUnit.secondsPerUnit;
   double? _canonical;
+
+  @override
+  void initState() {
+    super.initState();
+    _applySeed(widget.seed);
+  }
+
+  @override
+  void didUpdateWidget(OeeEnginePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.seedToken != oldWidget.seedToken) {
+      _applySeed(widget.seed);
+    }
+  }
+
+  void _applySeed(OeeRecord? seed) {
+    if (seed == null) {
+      _planned.clear();
+      _downtime.clear();
+      _speed.clear();
+      _total.clear();
+      _good.clear();
+      _unit = SpeedUnit.secondsPerUnit;
+      _canonical = null;
+      return;
+    }
+    _unit = seed.speedUnit;
+    _canonical = seed.idealCycleSeconds;
+    _planned.text = formatEngineQuantity(seed.plannedMinutes);
+    _downtime.text = formatEngineQuantity(seed.downtimeMinutes);
+    _speed.text = formatEngineQuantity(
+      displaySpeed(seed.idealCycleSeconds, seed.speedUnit),
+    );
+    _total.text = '${seed.totalUnits}';
+    _good.text = '${seed.goodUnits}';
+  }
 
   @override
   void dispose() {
@@ -116,6 +173,8 @@ class _OeeEnginePanelState extends State<OeeEnginePanel> {
     _good.dispose();
     _plannedFocus.dispose();
     _unitRateFocus.dispose();
+    _draftFocus.dispose();
+    _validateFocus.dispose();
     super.dispose();
   }
 
@@ -249,9 +308,50 @@ class _OeeEnginePanelState extends State<OeeEnginePanel> {
           onChanged: _changed,
         ),
         const SizedBox(height: 12),
-        _Result(reading: reading),
+        OeeEngineResultCard(
+          reading: reading,
+          hideStoredMessage: widget.storesRecords,
+        ),
+        if (widget.storesRecords) ...[
+          const SizedBox(height: 8),
+          FilledButton(
+            key: saveOeeDraftKey,
+            focusNode: _draftFocus,
+            style: workspaceControlStyle,
+            onPressed: _canSaveDraft(reading)
+                ? () => widget.onSaveDraft!(reading.inputs!)
+                : null,
+            child: Text(widget.draftLabel),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: saveOeeValidatedKey,
+            focusNode: _validateFocus,
+            style: workspaceControlStyle,
+            onPressed: _canSaveValidated(reading)
+                ? () => widget.onSaveValidated!(reading.inputs!)
+                : null,
+            child: Text(widget.validateLabel),
+          ),
+        ],
       ],
     );
+  }
+
+  bool _canSaveDraft(OeeTextResult reading) {
+    final outcome = reading.outcome;
+    return widget.onSaveDraft != null &&
+        reading.inputs != null &&
+        outcome != null &&
+        outcome.allowsDraft;
+  }
+
+  bool _canSaveValidated(OeeTextResult reading) {
+    final outcome = reading.outcome;
+    return widget.onSaveValidated != null &&
+        reading.inputs != null &&
+        outcome != null &&
+        outcome.allowsValidation;
   }
 
   Widget _unitButton(Key key, SpeedUnit unit, String label) {
@@ -306,10 +406,15 @@ class _OeeEnginePanelState extends State<OeeEnginePanel> {
   }
 }
 
-class _Result extends StatelessWidget {
-  const _Result({required this.reading});
+class OeeEngineResultCard extends StatelessWidget {
+  const OeeEngineResultCard({
+    super.key,
+    required this.reading,
+    this.hideStoredMessage = false,
+  });
 
   final OeeTextResult reading;
+  final bool hideStoredMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -339,10 +444,11 @@ class _Result extends StatelessWidget {
                 ),
               ),
               for (final note in outcome.notes)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(note),
-                ),
+                if (!hideStoredMessage || note != calculationNotStoredMessage)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(note),
+                  ),
               if (outcome.pie.allowed) ...[
                 const SizedBox(height: 12),
                 Text(pieExplanation),

@@ -400,6 +400,7 @@ class OeeRecord {
     required this.capturedPlantName,
     required this.createdAt,
     required this.updatedAt,
+    this.replacesId,
   });
 
   final String id;
@@ -421,6 +422,9 @@ class OeeRecord {
   final String capturedPlantName;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Registre validat que aquesta revisió corregeix. Absent vol dir cap.
+  final String? replacesId;
 }
 
 class MigrationReview {
@@ -782,6 +786,14 @@ String _allocateId(Workspace workspace, Set<String> used) {
     counter += 1;
   }
   return 'n$counter';
+}
+
+String allocateWorkspaceId(Workspace workspace) {
+  return _allocateId(workspace, liveIds(workspace));
+}
+
+int workspaceCounterAfter(String id, int current) {
+  return _counterAfter(id, current);
 }
 
 int _counterAfter(String id, int current) {

@@ -187,10 +187,17 @@ class OeeEngineComputation {
 }
 
 class OeeTextResult {
-  const OeeTextResult({required this.issues, required this.outcome});
+  const OeeTextResult({
+    required this.issues,
+    required this.outcome,
+    this.inputs,
+  });
 
   final List<OeeEngineIssue> issues;
   final OeeEngineOutcome? outcome;
+
+  /// Inputs ja parsejats. El registre hi congela P, S i la velocitat original.
+  final OeeEngineInputs? inputs;
 
   bool get isValid => outcome != null;
 }
@@ -373,20 +380,20 @@ OeeTextResult interpretOeeEngineText({
       ideal = canonicalCycle;
     }
   }
-  final computation = evaluateOeeEngine(
-    OeeEngineInputs(
-      plannedMinutes: plannedParse.value!,
-      downtimeMinutes: downtimeParse.value!,
-      speedOriginal: speedValue,
-      speedUnit: speedUnit,
-      totalUnits: totalParse.value!,
-      goodUnits: goodParse.value!,
-      idealCycleSeconds: ideal,
-    ),
+  final inputs = OeeEngineInputs(
+    plannedMinutes: plannedParse.value!,
+    downtimeMinutes: downtimeParse.value!,
+    speedOriginal: speedValue,
+    speedUnit: speedUnit,
+    totalUnits: totalParse.value!,
+    goodUnits: goodParse.value!,
+    idealCycleSeconds: ideal,
   );
+  final computation = evaluateOeeEngine(inputs);
   return OeeTextResult(
     issues: computation.issues,
     outcome: computation.outcome,
+    inputs: inputs,
   );
 }
 

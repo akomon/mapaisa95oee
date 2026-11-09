@@ -184,6 +184,7 @@ Map<String, Object?> _oeeToJson(OeeRecord item) {
     'capturedPlantName': item.capturedPlantName,
     'createdAt': encodeTimestamp(item.createdAt),
     'updatedAt': encodeTimestamp(item.updatedAt),
+    if (item.replacesId != null) 'replacesId': item.replacesId,
   };
 }
 
@@ -927,6 +928,14 @@ class _Parser {
       final plantName = text(row['capturedPlantName'], 'capturedPlantName');
       final createdAt = timestamp(row['createdAt'], 'createdAt');
       final updatedAt = timestamp(row['updatedAt'], 'updatedAt');
+      String? replacesId;
+      var replacesOk = true;
+      if (row.containsKey('replacesId') && row['replacesId'] != null) {
+        replacesId = idText(row['replacesId'], 'replacesId');
+        if (replacesId == null) {
+          replacesOk = false;
+        }
+      }
       if (production is! String || !productionDate(production)) {
         add(WorkspaceIssueCode.invalidField, field: 'productionDate');
       }
@@ -964,6 +973,7 @@ class _Parser {
           createdAt == null ||
           updatedAt == null ||
           !lotOk ||
+          !replacesOk ||
           shift.trim().isEmpty ||
           article.trim().isEmpty ||
           formula.trim().isEmpty ||
@@ -992,6 +1002,7 @@ class _Parser {
           capturedPlantName: plantName.trim(),
           createdAt: createdAt,
           updatedAt: updatedAt,
+          replacesId: replacesId,
         ),
       );
     }
@@ -1298,6 +1309,34 @@ class _Parser {
           field: 'lineId',
           entityId: record.lineId,
         );
+      }
+    }
+    final byId = {for (final record in records) record.id: record};
+    for (final record in records) {
+      final replacesId = record.replacesId;
+      if (replacesId == null) {
+        continue;
+      }
+      if (!byId.containsKey(replacesId)) {
+        add(
+          WorkspaceIssueCode.orphanReference,
+          field: 'replacesId',
+          entityId: replacesId,
+        );
+        continue;
+      }
+      final seen = <String>{record.id};
+      String? current = replacesId;
+      while (current != null && byId.containsKey(current)) {
+        if (!seen.add(current)) {
+          add(
+            WorkspaceIssueCode.cycle,
+            field: 'replacesId',
+            entityId: record.id,
+          );
+          break;
+        }
+        current = byId[current]!.replacesId;
       }
     }
   }
