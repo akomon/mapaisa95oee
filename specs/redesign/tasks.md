@@ -1,6 +1,6 @@
 # Tasques: fonament del replantejament (PR A)
 
-Extretes de [spec.md](spec.md). La spec es commita abans de qualsevol codi. Les PR B, C, D i E no formen part d'aquesta llista executable.
+Extretes de [spec.md](spec.md). La spec es commita abans de qualsevol codi. Les PR B, C, D i E no formen part d'aquesta llista executable. El detall de la PR D és [phase-d.md](phase-d.md), secció 15, i no reescriu les llistes de sota.
 
 ## T0 — Spec
 
