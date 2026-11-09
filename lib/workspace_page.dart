@@ -11,7 +11,7 @@ import 'workspace_model.dart';
 import 'workspace_phase_c.dart';
 import 'workspace_repository.dart';
 import 'workspace_theme.dart';
-import 'oee_engine_panel.dart';
+import 'oee_history_panel.dart';
 
 const Key workspaceTreeKey = Key('workspaceTree');
 const Key workspaceInspectorKey = Key('workspaceInspector');
@@ -28,6 +28,7 @@ const Key workspaceFitKey = Key('workspaceFit');
 const Key workspaceZoomInKey = Key('workspaceZoomIn');
 const Key workspaceZoomOutKey = Key('workspaceZoomOut');
 const Key workspaceLoadExampleKey = Key('workspaceLoadExample');
+const Key workspaceHistoryKey = Key('workspaceHistory');
 const Key workspaceParentFieldKey = Key('workspaceParent');
 const Key workspaceUnknownProtocolKey = Key('workspaceUnknownProtocol');
 const Key workspaceFlowDataKey = Key('workspaceFlowData');
@@ -96,6 +97,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _unknownProtocol = true;
   bool _treeOpen = false;
   bool _inspectorOpen = false;
+  bool _showAllHistory = false;
+  OeeRecord? _pendingOee;
+  int _oeeEpoch = 0;
   bool _fitted = false;
   final _functions = <IsaFunction>{};
   final _scope = <String>{};
@@ -2000,6 +2004,20 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   List<Widget> _inspectorBody() {
+    if (_showAllHistory) {
+      final id = _selectedId;
+      final asset = id == null ? null : findAsset(_workspace, id);
+      if (asset?.kind != AssetKind.line) {
+        return [
+          OeeHistoryBrowser(
+            repository: widget.repository,
+            onClose: () => setState(() => _showAllHistory = false),
+            onCorrect: _openRecordOnItsLine,
+            onEdit: _openRecordOnItsLine,
+          ),
+        ];
+      }
+    }
     if (_creating != null) {
       return _editor(creating: true);
     }
@@ -2008,6 +2026,23 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return const [Text('Selecciona un element de l\'arbre o del mapa.')];
     }
     return _editor(creating: false);
+  }
+
+  void _openRecordOnItsLine(OeeRecord record) {
+    final asset = findAsset(_workspace, record.lineId);
+    if (asset == null || asset.kind != AssetKind.line) {
+      return;
+    }
+    setState(() {
+      _pendingOee = record;
+      _showAllHistory = false;
+      _selectedId = record.lineId;
+      _creating = null;
+      _errors = {};
+      _oeeEpoch += 1;
+      _inspectorOpen = true;
+      _loadForm();
+    });
   }
 
   List<Widget> _editor({required bool creating}) {
@@ -2141,7 +2176,16 @@ class _WorkspacePageState extends State<WorkspacePage> {
         );
       }
       children.add(const SizedBox(height: 8));
-      children.add(OeeEnginePanel(lineName: asset!.name));
+      children.add(
+        OeeLineWorkbench(
+          key: ValueKey('oee-${asset!.id}-$_oeeEpoch'),
+          repository: widget.repository,
+          line: asset,
+          initialHistory: _showAllHistory,
+          pending: _pendingOee?.lineId == asset.id ? _pendingOee : null,
+          onHistoryChanged: (value) => setState(() => _showAllHistory = value),
+        ),
+      );
     }
     children.add(const SizedBox(height: 8));
     children.add(
@@ -2612,6 +2656,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
                           child: Text(
                             'Versions: ${_workspace.versions.length}',
                           ),
+                        ),
+                        OutlinedButton(
+                          key: workspaceHistoryKey,
+                          style: workspaceControlStyle,
+                          onPressed: () => setState(() {
+                            _showAllHistory = true;
+                            _pendingOee = null;
+                            _inspectorOpen = true;
+                            _oeeEpoch += 1;
+                          }),
+                          child: const Text('Històric OEE'),
                         ),
                         OutlinedButton(
                           key: workspaceExportKey,

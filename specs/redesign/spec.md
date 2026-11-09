@@ -479,6 +479,8 @@ No hi ha agregació a l'MVP. Si s'aprovés més endavant, l'OEE de conjunt seria
 
 El contracte executable de la PR D és la secció 15, a [phase-d.md](phase-d.md). No reobre els casos d'aquesta secció ni les decisions de la secció 8.
 
+El contracte executable de la PR E és la secció 16, a [phase-e.md](phase-e.md). No reobre les seccions 8, 14 ni 15.
+
 ## 6. Persistència, migració i QA
 
 IndexedDB és local a l'origen i al perfil del navegador. No és una còpia de seguretat. Esborrar dades del navegador, canviar de dispositiu, el mode privat o l'expulsió d'emmagatzematge pot perdre informació. La limitació es mostra al desament i a la còpia. Un error de quota no deixa un estat de desat fals. El JSON descarregable és la via de recuperació. No es promet sincronització ni durabilitat. Tampoc es promet que l'aplicació arrenqui sense xarxa: una closca offline tindria abast i proves propis.

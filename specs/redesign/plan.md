@@ -65,6 +65,8 @@ Després, servir el build web i comprovar al navegador la clau legacy, la recàr
 
 El pla de la PR D és [phase-d.md](phase-d.md), secció 15.
 
+El pla de la PR E és [phase-e.md](phase-e.md), secció 16.
+
 # Pla: espai de treball (PR B)
 
 Spec: [spec.md](spec.md), secció 13. Tasques: [tasks.md](tasks.md).

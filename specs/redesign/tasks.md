@@ -42,8 +42,8 @@ Extretes de [spec.md](spec.md). La spec es commita abans de qualsevol codi. Les 
 
 - [x] PR B: espai de treball, inventari, mapa IT/OT i fluxos manuals. El detall executable és la llista següent.
 - [x] PR C: plantilles, suggeriments, esquemes múltiples, snapshots i restauració (AC-11). El detall executable és la llista de la PR C.
-- [ ] PR D: motor OEE de la secció 5.
-- [ ] PR E: històric i filtres.
+- [x] PR D: motor OEE de la secció 5. El detall executable és [phase-d.md](phase-d.md).
+- [x] PR E: històric i filtres. El detall executable és [phase-e.md](phase-e.md).
 - [ ] QA integrada d'R6.
 
 # Tasques: espai de treball (PR B)
@@ -76,8 +76,8 @@ Extretes de [spec.md](spec.md), secció 13. Aquesta actualització es commita ab
 ## Fora de la PR B
 
 - [x] PR C: plantilles, suggeriments assistits, esquemes múltiples, snapshots, restauració i substitució completa. El detall executable és la llista següent.
-- [ ] PR D: motor OEE de la secció 5.
-- [ ] PR E: històric i filtres.
+- [x] PR D: motor OEE de la secció 5. El detall executable és [phase-d.md](phase-d.md).
+- [x] PR E: històric i filtres. El detall executable és [phase-e.md](phase-e.md).
 - [ ] QA integrada d'R6.
 
 # Tasques: plantilles, esquemes i versions (PR C)
@@ -109,6 +109,6 @@ Extretes de [spec.md](spec.md), secció 14. Aquesta actualització es commita ab
 
 ## Fora de la PR C
 
-- [ ] PR D: motor OEE de la secció 5.
-- [ ] PR E: històric i filtres.
+- [x] PR D: motor OEE de la secció 5. El detall executable és [phase-d.md](phase-d.md).
+- [x] PR E: històric i filtres. El detall executable és [phase-e.md](phase-e.md).
 - [ ] QA integrada d'R6.
