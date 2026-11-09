@@ -63,6 +63,8 @@ Després, servir el build web i comprovar al navegador la clau legacy, la recàr
 - El calculador US-1 i les fórmules de la secció 5 conviuen fins a la PR D. No s'han d'unificar aquí.
 - Una quota esgotada depèn del navegador. El repositori tracta qualsevol excepció d'escriptura com a error i no marca `Desat`.
 
+El pla de la PR D és [phase-d.md](phase-d.md), secció 15.
+
 # Pla: espai de treball (PR B)
 
 Spec: [spec.md](spec.md), secció 13. Tasques: [tasks.md](tasks.md).
