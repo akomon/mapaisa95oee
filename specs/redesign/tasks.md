@@ -91,21 +91,21 @@ Extretes de [spec.md](spec.md), secció 14. Aquesta actualització es commita ab
 
 ## T9 — Plantilles i suggeriments
 
-- [ ] Catàleg `envasat` i `cambra`, previsualització de màquines i icones, alta que només hereta el pare.
-- [ ] Cap plantilla ni canvi d'icona assigna funcions o fluxos confirmats.
-- [ ] Suggeriments visibles, descart individual i confirmació individual. Cap flux creat des de l'abast sol. Cap xarxa.
+- [x] Catàleg `envasat` i `cambra`, previsualització de màquines i icones, alta que només hereta el pare.
+- [x] Cap plantilla ni canvi d'icona assigna funcions o fluxos confirmats.
+- [x] Suggeriments visibles, descart individual i confirmació individual. Cap flux creat des de l'abast sol. Cap xarxa.
 
 ## T10 — Esquemes, instantànies i còpia
 
-- [ ] Crear, copiar, desar i reobrir esquemes amb disposició i selecció contextual.
-- [ ] Instantània amb data i nota. Restauració que referencia l'origen, sense mutar versions prèvies, mestres ni OEE.
-- [ ] Substitució completa amb prevalidació, impacte, confirmació, còpia prèvia i cap base parcial.
+- [x] Crear, copiar, desar i reobrir esquemes amb disposició i selecció contextual.
+- [x] Instantània amb data i nota. Restauració que referencia l'origen, sense mutar versions prèvies, mestres ni OEE.
+- [x] Substitució completa amb prevalidació, impacte, confirmació, còpia prèvia i cap base parcial.
 
 ## T11 — Verificació
 
-- [ ] Tests dels AC d'aquesta PR, inclòs el cicle de versions i el cicle de flux.
-- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real, amb el flux manual de la PR B.
-- [ ] 360 px, teclat, focus visible i objectius de 48 dp.
+- [x] Tests dels AC d'aquesta PR, inclòs el cicle de versions i el cicle de flux.
+- [x] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real, amb el flux manual de la PR B.
+- [x] 360 px, teclat, focus visible i objectius de 48 dp.
 
 ## Fora de la PR C
 

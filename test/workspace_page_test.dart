@@ -1,11 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapaisa95oee/plant_store.dart';
 import 'package:mapaisa95oee/workspace_codec.dart';
+import 'package:mapaisa95oee/workspace_database.dart';
 import 'package:mapaisa95oee/workspace_database_memory.dart';
 import 'package:mapaisa95oee/workspace_model.dart';
 import 'package:mapaisa95oee/workspace_page.dart';
+import 'package:mapaisa95oee/workspace_phase_c.dart';
 import 'package:mapaisa95oee/workspace_repository.dart';
 
 void main() {
@@ -440,5 +444,373 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     expect(find.text('Desat'), findsOneWidget);
+  });
+
+  testWidgets('la plantilla es previsualitza i no assigna funcions ni fluxos', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+    await select(tester, 'n4');
+    await reveal(tester, find.byKey(workspaceTemplateKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceTemplateKey));
+    await tester.pumpAndSettle();
+    expect(find.text('Icona: Màquina'), findsWidgets);
+    expect(find.textContaining('Omplidora'), findsWidgets);
+    expect(find.textContaining('Taponadora'), findsWidgets);
+    expect(
+      tester.getSize(find.byKey(cancelTemplateKey)).height,
+      greaterThanOrEqualTo(48),
+    );
+
+    final cancel = tester.widget<TextButton>(find.byKey(cancelTemplateKey));
+    cancel.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(repo.workspace.assets, hasLength(14));
+    expect(repo.workspace.flows, isEmpty);
+
+    await reveal(tester, find.byKey(workspaceTemplateKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceTemplateKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(applyTemplateKey));
+    await tester.pumpAndSettle();
+    final created = repo.workspace.assets.where(
+      (asset) => asset.id == 'n21' || asset.id == 'n22',
+    );
+    expect(created.map((asset) => asset.parentId), ['n4', 'n4']);
+    expect(created.every((asset) => asset.functions.isEmpty), isTrue);
+    expect(created.every((asset) => asset.iconKey == IconKey.machine), isTrue);
+    expect(repo.workspace.flows, isEmpty);
+
+    await select(tester, 'n21');
+    final icon = find.byType(DropdownButton<IconKey>, skipOffstage: false);
+    await reveal(tester, icon);
+    tester.widget<DropdownButton<IconKey>>(icon).onChanged!(IconKey.line);
+    await tester.pumpAndSettle();
+    await reveal(tester, find.byKey(workspaceSaveEditKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceSaveEditKey));
+    await tester.pumpAndSettle();
+    expect(findAsset(repo.workspace, 'n21')!.iconKey, IconKey.line);
+    expect(findAsset(repo.workspace, 'n21')!.functions, isEmpty);
+    expect(findAsset(repo.workspace, 'n21')!.kind, AssetKind.machine);
+    expect(repo.workspace.flows, isEmpty);
+  });
+
+  testWidgets('cada suggeriment es descarta o es confirma sol', (tester) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+    await reveal(tester, find.byKey(workspaceSuggestKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceSuggestKey));
+    await tester.pumpAndSettle();
+    expect(repo.workspace.flows, isEmpty);
+    expect(
+      find.textContaining('Suggeriment: ERP corporatiu → Planta Girona'),
+      findsOneWidget,
+    );
+
+    await reveal(
+      tester,
+      find.byKey(const Key('discard-suggestion-n16>n2'), skipOffstage: false),
+    );
+    await tester.tap(find.byKey(const Key('discard-suggestion-n16>n2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Suggeriment: ERP corporatiu → Planta Girona'),
+      findsNothing,
+    );
+    expect(repo.workspace.flows, isEmpty);
+    expect(
+      find.textContaining(
+        'Suggeriment: ERP corporatiu → Planta Lleida',
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+
+    await reveal(
+      tester,
+      find.byKey(const Key('confirm-suggestion-n16>n12'), skipOffstage: false),
+    );
+    await tester.tap(find.byKey(const Key('confirm-suggestion-n16>n12')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(suggestionDataKey), 'Ordres');
+    await tester.enterText(find.byKey(suggestionPurposeKey), 'Enviar el pla');
+    await tester.tap(find.byKey(confirmSuggestionDialogKey));
+    await tester.pumpAndSettle();
+    expect(repo.workspace.flows, hasLength(1));
+    expect(repo.workspace.flows.single.status, FlowStatus.confirmed);
+    expect(repo.workspace.flows.single.sourceId, 'n16');
+    expect(repo.workspace.flows.single.targetId, 'n12');
+    expect(repo.workspace.flows.single.protocol, isNull);
+    expect(
+      find.textContaining('Suggeriment: MES envasat → Línia iogurt'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('dos esquemes reobren la disposició i la selecció', (
+    tester,
+  ) async {
+    final database = MemoryWorkspaceDatabase();
+    final repo = await open(example: true, database: database);
+    await pumpPage(tester, repo);
+    await select(tester, 'n16');
+    await reveal(tester, find.byKey(workspaceLayoutXKey, skipOffstage: false));
+    await tester.enterText(find.byKey(workspaceLayoutXKey), '5000');
+    await tester.enterText(find.byKey(workspaceLayoutYKey), '0');
+    await tester.tap(find.byKey(workspaceSaveLayoutKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const Key('map-n16'))).left,
+      greaterThan(tester.getRect(find.byKey(const Key('map-n19'))).left),
+    );
+
+    await select(tester, 'n4');
+    await reveal(
+      tester,
+      find.byKey(workspaceNewSchemaKey, skipOffstage: false),
+    );
+    await tester.tap(find.byKey(workspaceNewSchemaKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(workspaceSchemaNameKey), 'Només Lleida');
+    await tester.tap(find.byKey(const Key('schema-plant-n12')));
+    await tester.tap(find.byKey(createSchemaKey));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Identificador n4'), findsNothing);
+    expect(find.byKey(const Key('map-n17')), findsNothing);
+    expect(find.byKey(const Key('map-n16')), findsOneWidget);
+    expect(find.text('Línia'), findsWidgets);
+    expect(find.textContaining('L2'), findsNothing);
+
+    await reveal(
+      tester,
+      find.byKey(workspaceSchemaPickerKey, skipOffstage: false),
+    );
+    await tester.tap(find.byKey(workspaceSchemaPickerKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Esquema alimentari').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Identificador n4'), findsOneWidget);
+    expect(find.byKey(const Key('map-n17')), findsOneWidget);
+
+    final again = WorkspaceRepository(
+      database: database,
+      readLegacy: () async => null,
+      now: () => now,
+    );
+    await again.open();
+    final lleida = again.workspace.schemas.last;
+    expect(lleida.name, 'Només Lleida');
+    expect(lleida.plantIds, ['n12']);
+    expect(lleida.flowIds, isEmpty);
+    expect(findSchema(again.workspace, 'n20')!.layout['n16']!.x, 5000);
+    await pumpPage(tester, again);
+    expect(find.byKey(workspaceSchemaPickerKey), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(const Key('map-n16'))).left,
+      greaterThan(tester.getRect(find.byKey(const Key('map-n19'))).left),
+    );
+  });
+
+  testWidgets(
+    'restaurar una instantània no muta l\'OEE ni la versió d\'origen',
+    (tester) async {
+      final repo = await open(example: true);
+      await repo.saveWorkspace(
+        repo.workspace.copyWith(
+          oeeRecords: [
+            OeeRecord(
+              id: 'n40',
+              productionDate: '2026-03-01',
+              shift: 'Matí',
+              lineId: 'n4',
+              article: 'Iogurt natural',
+              lot: null,
+              plannedMinutes: 480,
+              downtimeMinutes: 60,
+              speedOriginal: 1,
+              speedUnit: SpeedUnit.secondsPerUnit,
+              idealCycleSeconds: 1,
+              totalUnits: 24000,
+              goodUnits: 22800,
+              status: OeeRecordStatus.validated,
+              formulaVersion: 'oee.v1',
+              capturedLineName: 'Línia iogurt',
+              capturedPlantName: 'Planta Girona',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          ],
+        ),
+      );
+      await pumpPage(tester, repo);
+      await reveal(
+        tester,
+        find.byKey(workspaceSnapshotKey, skipOffstage: false),
+      );
+      await tester.tap(find.byKey(workspaceSnapshotKey));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Data: 2026-09-02T09:00:00.000Z'),
+        findsOneWidget,
+      );
+      final cancel = tester.widget<TextButton>(find.byKey(cancelSnapshotKey));
+      cancel.focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(repo.workspace.versions, isEmpty);
+
+      await tester.tap(find.byKey(workspaceSnapshotKey));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(workspaceSnapshotNoteKey),
+        'Primera captura',
+      );
+      await tester.tap(find.byKey(createSnapshotKey));
+      await tester.pumpAndSettle();
+      expect(repo.workspace.versions.single.note, 'Primera captura');
+      expect(repo.workspace.oeeRecords.single.article, 'Iogurt natural');
+
+      await select(tester, 'n4');
+      await tester.enterText(find.byKey(workspaceNameFieldKey), 'Línia nova');
+      final save = find.byKey(workspaceSaveEditKey, skipOffstage: false);
+      await reveal(tester, save);
+      tester.widget<FilledButton>(save).onPressed!.call();
+      await tester.pumpAndSettle();
+
+      await reveal(
+        tester,
+        find.byKey(workspaceVersionsKey, skipOffstage: false),
+      );
+      await tester.tap(find.byKey(workspaceVersionsKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('restore-n21')));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('L\'inventari i l\'OEE no es modifiquen.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('n4:'), findsOneWidget);
+      await tester.tap(find.byKey(cancelRestoreKey));
+      await tester.pumpAndSettle();
+      expect(repo.workspace.versions, hasLength(1));
+      expect(findAsset(repo.workspace, 'n4')!.name, 'Línia nova');
+
+      await tester.tap(find.byKey(workspaceVersionsKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('restore-n21')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(workspaceRestoreNoteKey),
+        'Restauració',
+      );
+      await tester.tap(find.byKey(confirmRestoreKey));
+      await tester.pumpAndSettle();
+      expect(repo.workspace.versions, hasLength(2));
+      expect(repo.workspace.versions.first.note, 'Primera captura');
+      expect(repo.workspace.versions.last.parentVersionId, 'n21');
+      expect(repo.workspace.versions.last.note, 'Restauració');
+      expect(findAsset(repo.workspace, 'n4')!.name, 'Línia nova');
+      expect(repo.workspace.oeeRecords.single.capturedLineName, 'Línia iogurt');
+      expect(repo.workspace.oeeRecords.single.idealCycleSeconds, 1);
+      final versions =
+          jsonDecode(architectureVersionsJson(repo.workspace)) as List;
+      expect(
+        (versions.first as Map)['snapshot'],
+        (versions.last as Map)['snapshot'],
+      );
+    },
+  );
+
+  testWidgets(
+    'la importació rebutjada o cancel·lada no deixa una base parcial',
+    (tester) async {
+      final database = MemoryWorkspaceDatabase();
+      final repo = await open(example: true, database: database);
+      await pumpPage(tester, repo);
+      final before = workspaceToJson(repo.workspace);
+
+      Future<void> openImport(String raw) async {
+        await reveal(
+          tester,
+          find.byKey(workspaceImportKey, skipOffstage: false),
+        );
+        await tester.tap(find.byKey(workspaceImportKey));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(workspaceImportFieldKey), raw);
+        await tester.tap(find.byKey(prepareWorkspaceImportKey));
+        await tester.pumpAndSettle();
+      }
+
+      await openImport('{');
+      expect(find.text('El JSON no és vàlid.'), findsOneWidget);
+      expect(workspaceToJson(repo.workspace), before);
+      expect(find.text('Desat'), findsOneWidget);
+
+      await openImport(workspaceToJson(createEmptyWorkspace()));
+      expect(find.text('Substitució completa'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(cancelWorkspaceReplaceKey)).height,
+        greaterThanOrEqualTo(48),
+      );
+      await tester.tap(find.byKey(cancelWorkspaceReplaceKey));
+      await tester.pumpAndSettle();
+      expect(workspaceToJson(repo.workspace), before);
+
+      database.failWrites = 1;
+      await openImport(workspaceToJson(createEmptyWorkspace()));
+      await tester.tap(find.byKey(confirmWorkspaceReplaceKey));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Error de desament'), findsOneWidget);
+      expect(find.text('Desat'), findsNothing);
+      expect(database.values[workspaceDocumentKey], before);
+      expect(repo.workspace.organizations, isNotEmpty);
+
+      await openImport(workspaceToJson(createEmptyWorkspace()));
+      await tester.tap(find.byKey(confirmWorkspaceReplaceKey));
+      await tester.pumpAndSettle();
+      expect(repo.workspace.organizations, isEmpty);
+      expect(find.text('Desat'), findsOneWidget);
+      expect(database.values[priorBackupKey], before);
+    },
+  );
+
+  testWidgets('a 360 la plantilla i el flux manual caben', (tester) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo, size: const Size(360, 800));
+    await tester.tap(find.byKey(workspaceTreeToggleKey));
+    await tester.pumpAndSettle();
+    await select(tester, 'n4');
+    await reveal(
+      tester,
+      find.byKey(workspaceInspectorToggleKey, skipOffstage: false),
+    );
+    await tester.tap(find.byKey(workspaceInspectorToggleKey));
+    await tester.pumpAndSettle();
+    await reveal(tester, find.byKey(workspaceTemplateKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceTemplateKey));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSize(find.byKey(applyTemplateKey)).height,
+      greaterThanOrEqualTo(48),
+    );
+    await tester.tap(find.byKey(cancelTemplateKey));
+    await tester.pumpAndSettle();
+
+    await reveal(tester, find.byKey(workspaceAddKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceAddKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flux').last);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('El flux és manual.', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    expect(repo.workspace.flows, isEmpty);
   });
 }

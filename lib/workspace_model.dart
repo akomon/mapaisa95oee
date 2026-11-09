@@ -2014,3 +2014,575 @@ Workspace foodIndustryExample() {
     schemas: [schema],
   );
 }
+
+class MachineTemplateItem {
+  const MachineTemplateItem({required this.name, required this.iconKey});
+
+  final String name;
+  final IconKey iconKey;
+}
+
+class MachineTemplate {
+  const MachineTemplate({
+    required this.id,
+    required this.name,
+    required this.machines,
+  });
+
+  final String id;
+  final String name;
+  final List<MachineTemplateItem> machines;
+}
+
+const List<MachineTemplate> machineTemplates = [
+  MachineTemplate(
+    id: 'envasat',
+    name: 'Envasat',
+    machines: [
+      MachineTemplateItem(name: 'Omplidora', iconKey: IconKey.machine),
+      MachineTemplateItem(name: 'Taponadora', iconKey: IconKey.machine),
+    ],
+  ),
+  MachineTemplate(
+    id: 'cambra',
+    name: 'Cambra',
+    machines: [
+      MachineTemplateItem(
+        name: 'Sensor de temperatura',
+        iconKey: IconKey.machine,
+      ),
+    ],
+  ),
+];
+
+class InventoryDivergence {
+  const InventoryDivergence({required this.entityId, required this.message});
+
+  final String entityId;
+  final String message;
+}
+
+MachineTemplate? findMachineTemplate(String id) {
+  for (final template in machineTemplates) {
+    if (template.id == id) {
+      return template;
+    }
+  }
+  return null;
+}
+
+WorkSchema? findSchema(Workspace workspace, String id) {
+  for (final schema in workspace.schemas) {
+    if (schema.id == id) {
+      return schema;
+    }
+  }
+  return null;
+}
+
+ArchitectureVersion? findVersion(Workspace workspace, String id) {
+  for (final version in workspace.versions) {
+    if (version.id == id) {
+      return version;
+    }
+  }
+  return null;
+}
+
+WorkspaceMutation applyMachineTemplate(
+  Workspace workspace, {
+  required String templateId,
+  required String lineId,
+  required DateTime now,
+}) {
+  final template = findMachineTemplate(templateId);
+  if (template == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: templateId),
+    ]);
+  }
+  final line = findAsset(workspace, lineId);
+  if (line == null || line.kind != AssetKind.line) {
+    return _failure(const [
+      WorkspaceIssue(WorkspaceIssueCode.incompatibleParent, field: 'parentId'),
+    ]);
+  }
+  var current = workspace;
+  for (final item in template.machines) {
+    final mutation = addAsset(
+      current,
+      kind: AssetKind.machine,
+      parentId: lineId,
+      name: item.name,
+      iconKey: item.iconKey,
+      functions: const [],
+      now: now,
+    );
+    if (mutation.workspace == null) {
+      return mutation;
+    }
+    current = mutation.workspace!;
+  }
+  return WorkspaceMutation.success(current);
+}
+
+WorkspaceMutation addSchema(
+  Workspace workspace, {
+  required String name,
+  String? description,
+  List<String> plantIds = const [],
+  required DateTime now,
+}) {
+  final trimmed = name.trim();
+  final issues = <WorkspaceIssue>[];
+  if (trimmed.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    );
+  }
+  final plants = <String>[];
+  for (final id in plantIds) {
+    if (plants.contains(id)) {
+      issues.add(
+        WorkspaceIssue(
+          WorkspaceIssueCode.duplicateId,
+          field: 'plantIds',
+          entityId: id,
+        ),
+      );
+      continue;
+    }
+    if (findAsset(workspace, id)?.kind != AssetKind.plant) {
+      issues.add(
+        WorkspaceIssue(
+          WorkspaceIssueCode.invalidField,
+          field: 'plantIds',
+          entityId: id,
+        ),
+      );
+      continue;
+    }
+    plants.add(id);
+  }
+  if (issues.isNotEmpty) {
+    return _failure(issues);
+  }
+  final included = <Asset>[];
+  void walk(String parentId) {
+    for (final asset in workspace.assets) {
+      if (asset.parentId == parentId) {
+        included.add(asset);
+        walk(asset.id);
+      }
+    }
+  }
+
+  for (final plantId in plants) {
+    final plant = findAsset(workspace, plantId);
+    if (plant != null) {
+      included.add(plant);
+      walk(plant.id);
+    }
+  }
+  final assetIds = [for (final asset in included) asset.id];
+  final assetSet = assetIds.toSet();
+  final systems = [
+    for (final system in workspace.systems)
+      if (system.scopeIds.any(assetSet.contains)) system,
+  ];
+  final placed = [...assetIds, for (final system in systems) system.id];
+  final stamp = asUtc(now);
+  final id = _allocateId(workspace, liveIds(workspace));
+  final schema = WorkSchema(
+    id: id,
+    name: trimmed,
+    description: normalizeOptionalText(description),
+    plantIds: plants,
+    assetIds: assetIds,
+    systemIds: [for (final system in systems) system.id],
+    layout: {
+      for (var index = 0; index < placed.length; index++)
+        placed[index]: LayoutPoint(index * 160.0, 0),
+    },
+    createdAt: stamp,
+    updatedAt: stamp,
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      schemas: [...workspace.schemas, schema],
+    ),
+  );
+}
+
+WorkspaceMutation copySchema(
+  Workspace workspace, {
+  required String schemaId,
+  required String name,
+  required DateTime now,
+}) {
+  final schema = findSchema(workspace, schemaId);
+  final trimmed = name.trim();
+  final issues = <WorkspaceIssue>[];
+  if (schema == null) {
+    issues.add(WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId));
+  }
+  if (trimmed.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    );
+  }
+  if (issues.isNotEmpty || schema == null) {
+    return _failure(issues);
+  }
+  final stamp = asUtc(now);
+  final id = _allocateId(workspace, liveIds(workspace));
+  final copy = WorkSchema(
+    id: id,
+    name: trimmed,
+    description: schema.description,
+    plantIds: schema.plantIds,
+    assetIds: schema.assetIds,
+    systemIds: schema.systemIds,
+    flowIds: schema.flowIds,
+    layout: {
+      for (final entry in schema.layout.entries)
+        entry.key: LayoutPoint(entry.value.x, entry.value.y),
+    },
+    createdAt: stamp,
+    updatedAt: stamp,
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      schemas: [...workspace.schemas, copy],
+    ),
+  );
+}
+
+WorkspaceMutation updateSchemaLayout(
+  Workspace workspace, {
+  required String schemaId,
+  required String entityId,
+  required LayoutPoint at,
+  required DateTime now,
+}) {
+  final schema = findSchema(workspace, schemaId);
+  if (schema == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId),
+    ]);
+  }
+  if (!at.x.isFinite || !at.y.isFinite) {
+    return _failure(const [
+      WorkspaceIssue(WorkspaceIssueCode.invalidField, field: 'layout'),
+    ]);
+  }
+  final cited = {
+    ...schema.plantIds,
+    ...schema.assetIds,
+    ...schema.systemIds,
+    ...schema.flowIds,
+  };
+  if (!cited.contains(entityId)) {
+    return _failure([
+      WorkspaceIssue(
+        WorkspaceIssueCode.orphanReference,
+        field: 'layout',
+        entityId: entityId,
+      ),
+    ]);
+  }
+  final layout = Map<String, LayoutPoint>.of(schema.layout);
+  layout[entityId] = at;
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      schemas: [
+        for (final item in workspace.schemas)
+          if (item.id == schemaId)
+            item.copyWith(layout: layout, updatedAt: asUtc(now))
+          else
+            item,
+      ],
+    ),
+  );
+}
+
+ArchitectureSnapshot captureSchemaSnapshot(
+  Workspace workspace,
+  WorkSchema schema,
+) {
+  final assetIds = <String>{...schema.assetIds, ...schema.plantIds};
+  final systemIds = <String>{...schema.systemIds};
+  final flowIds = <String>{...schema.flowIds};
+  for (final flowId in schema.flowIds) {
+    final flow = findFlow(workspace, flowId);
+    if (flow == null) {
+      continue;
+    }
+    if (findAsset(workspace, flow.sourceId) != null) {
+      assetIds.add(flow.sourceId);
+    }
+    if (findAsset(workspace, flow.targetId) != null) {
+      assetIds.add(flow.targetId);
+    }
+    if (findSystem(workspace, flow.sourceId) != null) {
+      systemIds.add(flow.sourceId);
+    }
+    if (findSystem(workspace, flow.targetId) != null) {
+      systemIds.add(flow.targetId);
+    }
+  }
+  for (final systemId in systemIds.toList()) {
+    final system = findSystem(workspace, systemId);
+    if (system == null) {
+      continue;
+    }
+    for (final scopeId in system.scopeIds) {
+      if (findAsset(workspace, scopeId) != null) {
+        assetIds.add(scopeId);
+      }
+    }
+  }
+  final pending = assetIds.toList();
+  for (var index = 0; index < pending.length; index++) {
+    final asset = findAsset(workspace, pending[index]);
+    if (asset == null) {
+      continue;
+    }
+    if (findAsset(workspace, asset.parentId) != null &&
+        assetIds.add(asset.parentId)) {
+      pending.add(asset.parentId);
+    }
+  }
+  final organizationIds = <String>{};
+  for (final id in assetIds) {
+    final asset = findAsset(workspace, id);
+    if (asset != null && findOrganization(workspace, asset.parentId) != null) {
+      organizationIds.add(asset.parentId);
+    }
+  }
+  return ArchitectureSnapshot(
+    schema: _cloneSchema(schema),
+    organizations: [
+      for (final item in workspace.organizations)
+        if (organizationIds.contains(item.id)) item.copyWith(),
+    ],
+    assets: [
+      for (final item in workspace.assets)
+        if (assetIds.contains(item.id))
+          item.copyWith(functions: [...item.functions]),
+    ],
+    systems: [
+      for (final item in workspace.systems)
+        if (systemIds.contains(item.id))
+          item.copyWith(
+            scopeIds: [...item.scopeIds],
+            functions: [...item.functions],
+          ),
+    ],
+    flows: [
+      for (final item in workspace.flows)
+        if (flowIds.contains(item.id)) item.copyWith(),
+    ],
+  );
+}
+
+WorkspaceMutation createSnapshot(
+  Workspace workspace, {
+  required String schemaId,
+  required String note,
+  required DateTime now,
+}) {
+  final schema = findSchema(workspace, schemaId);
+  if (schema == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId),
+    ]);
+  }
+  final id = _allocateId(workspace, liveIds(workspace));
+  final version = ArchitectureVersion(
+    id: id,
+    schemaId: schema.id,
+    createdAt: asUtc(now),
+    note: note,
+    parentVersionId: null,
+    snapshot: captureSchemaSnapshot(workspace, schema),
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      versions: [...workspace.versions, version],
+    ),
+  );
+}
+
+WorkspaceMutation restoreSnapshot(
+  Workspace workspace, {
+  required String versionId,
+  required String note,
+  required DateTime now,
+}) {
+  final origin = findVersion(workspace, versionId);
+  if (origin == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: versionId),
+    ]);
+  }
+  final id = _allocateId(workspace, liveIds(workspace));
+  final version = ArchitectureVersion(
+    id: id,
+    schemaId: origin.snapshot.schema.id,
+    createdAt: asUtc(now),
+    note: note,
+    parentVersionId: origin.id,
+    snapshot: _cloneSnapshot(origin.snapshot),
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      versions: [...workspace.versions, version],
+    ),
+  );
+}
+
+List<InventoryDivergence> snapshotDivergences(
+  Workspace workspace,
+  ArchitectureSnapshot snapshot,
+) {
+  final notes = <InventoryDivergence>[];
+  void add(String id, String message) {
+    notes.add(InventoryDivergence(entityId: id, message: message));
+  }
+
+  bool sameStrings(List<String> left, List<String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool sameFunctions(List<IsaFunction> left, List<IsaFunction> right) {
+    return sameStrings(
+      [for (final item in left) item.name],
+      [for (final item in right) item.name],
+    );
+  }
+
+  for (final item in snapshot.organizations) {
+    final live = findOrganization(workspace, item.id);
+    if (live == null) {
+      add(item.id, 'Absent de l\'inventari vigent.');
+    } else if (live.name != item.name || live.description != item.description) {
+      add(item.id, 'El nom o la descripció no coincideixen.');
+    }
+  }
+  for (final item in snapshot.assets) {
+    final live = findAsset(workspace, item.id);
+    if (live == null) {
+      add(item.id, 'Absent de l\'inventari vigent.');
+    } else if (live.name != item.name ||
+        live.kind != item.kind ||
+        live.parentId != item.parentId ||
+        live.iconKey != item.iconKey ||
+        !sameFunctions(live.functions, item.functions)) {
+      add(item.id, 'La pertinença, la icona o les funcions no coincideixen.');
+    }
+  }
+  for (final item in snapshot.systems) {
+    final live = findSystem(workspace, item.id);
+    if (live == null) {
+      add(item.id, 'Absent de l\'inventari vigent.');
+    } else if (live.name != item.name ||
+        live.systemType != item.systemType ||
+        live.iconKey != item.iconKey ||
+        live.zone != item.zone ||
+        !sameStrings(live.scopeIds, item.scopeIds) ||
+        !sameFunctions(live.functions, item.functions)) {
+      add(item.id, 'L\'abast, les funcions o la zona no coincideixen.');
+    }
+  }
+  for (final item in snapshot.flows) {
+    final live = findFlow(workspace, item.id);
+    if (live == null) {
+      add(item.id, 'Absent de l\'inventari vigent.');
+    } else if (live.sourceId != item.sourceId ||
+        live.targetId != item.targetId ||
+        live.exchangedData != item.exchangedData ||
+        live.protocol != item.protocol ||
+        live.purpose != item.purpose ||
+        live.status != item.status) {
+      add(item.id, 'Els extrems o l\'estat del flux no coincideixen.');
+    }
+  }
+  final liveSchema = findSchema(workspace, snapshot.schema.id);
+  if (liveSchema == null) {
+    add(snapshot.schema.id, 'Absent de l\'inventari vigent.');
+  } else if (liveSchema.name != snapshot.schema.name ||
+      !sameStrings(liveSchema.plantIds, snapshot.schema.plantIds) ||
+      !sameStrings(liveSchema.assetIds, snapshot.schema.assetIds) ||
+      !sameStrings(liveSchema.systemIds, snapshot.schema.systemIds) ||
+      !sameStrings(liveSchema.flowIds, snapshot.schema.flowIds) ||
+      !_sameLayout(liveSchema.layout, snapshot.schema.layout)) {
+    add(snapshot.schema.id, 'La disposició o la pertinença no coincideixen.');
+  }
+  return List.unmodifiable(notes);
+}
+
+bool _sameLayout(
+  Map<String, LayoutPoint> left,
+  Map<String, LayoutPoint> right,
+) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (final entry in left.entries) {
+    final other = right[entry.key];
+    if (other == null || other.x != entry.value.x || other.y != entry.value.y) {
+      return false;
+    }
+  }
+  return true;
+}
+
+WorkSchema _cloneSchema(WorkSchema schema) {
+  return WorkSchema(
+    id: schema.id,
+    name: schema.name,
+    description: schema.description,
+    plantIds: schema.plantIds,
+    assetIds: schema.assetIds,
+    systemIds: schema.systemIds,
+    flowIds: schema.flowIds,
+    layout: {
+      for (final entry in schema.layout.entries)
+        entry.key: LayoutPoint(entry.value.x, entry.value.y),
+    },
+    createdAt: schema.createdAt,
+    updatedAt: schema.updatedAt,
+  );
+}
+
+ArchitectureSnapshot _cloneSnapshot(ArchitectureSnapshot snapshot) {
+  return ArchitectureSnapshot(
+    schema: _cloneSchema(snapshot.schema),
+    organizations: [for (final item in snapshot.organizations) item.copyWith()],
+    assets: [
+      for (final item in snapshot.assets)
+        item.copyWith(functions: [...item.functions]),
+    ],
+    systems: [
+      for (final item in snapshot.systems)
+        item.copyWith(
+          scopeIds: [...item.scopeIds],
+          functions: [...item.functions],
+        ),
+    ],
+    flows: [for (final item in snapshot.flows) item.copyWith()],
+  );
+}

@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import 'flow_suggestions.dart';
+import 'plant_io.dart' as plant_io;
+import 'workspace_codec.dart';
 import 'workspace_model.dart';
+import 'workspace_phase_c.dart';
 import 'workspace_repository.dart';
 import 'workspace_theme.dart';
 
@@ -47,11 +51,15 @@ class WorkspacePage extends StatefulWidget {
     required this.repository,
     this.onOpenOee,
     this.onOpenData,
+    this.exportJson,
+    this.importJson,
   });
 
   final WorkspaceRepository repository;
   final VoidCallback? onOpenOee;
   final VoidCallback? onOpenData;
+  final Future<void> Function(String filename, String json)? exportJson;
+  final Future<String?> Function()? importJson;
 
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
@@ -64,12 +72,18 @@ class _WorkspacePageState extends State<WorkspacePage> {
   final _protocol = TextEditingController();
   final _purpose = TextEditingController();
   final _search = TextEditingController();
+  final _layoutX = TextEditingController();
+  final _layoutY = TextEditingController();
   final _transform = TransformationController();
+  final _inspectorScroll = ScrollController();
   final _foci = <String, FocusNode>{};
+  final _dismissedSuggestions = <String>{};
+  final _schemaContext = <String, ({String? plantId, String? selectedId})>{};
 
   String? _selectedId;
   String? _plantId;
   String? _schemaId;
+  bool _assist = false;
   _Draft? _creating;
   String? _parentId;
   IconKey _icon = IconKey.organization;
@@ -111,7 +125,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
     _protocol.dispose();
     _purpose.dispose();
     _search.dispose();
+    _layoutX.dispose();
+    _layoutY.dispose();
     _transform.dispose();
+    _inspectorScroll.dispose();
     for (final node in _foci.values) {
       node.dispose();
     }
@@ -142,18 +159,49 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (_schemaId == null || schemas.every((item) => item.id != _schemaId)) {
       _schemaId = schemas.firstOrNull?.id;
     }
+    final schema = schemas.where((item) => item.id == _schemaId).firstOrNull;
     final plants = [
       for (final asset in _workspace.assets)
         if (asset.kind == AssetKind.plant) asset,
     ];
-    if (_plantId != null && plants.any((item) => item.id == _plantId)) {
+    final allowed = schema == null || schema.plantIds.isEmpty
+        ? plants
+        : [
+            for (final plant in plants)
+              if (schema.plantIds.contains(plant.id)) plant,
+          ];
+    if (_plantId != null && allowed.any((item) => item.id == _plantId)) {
       return;
     }
-    final schema = schemas.where((item) => item.id == _schemaId).firstOrNull;
-    final preferred = schema?.plantIds
-        .where((id) => plants.any((plant) => plant.id == id))
-        .firstOrNull;
-    _plantId = preferred ?? plants.firstOrNull?.id;
+    _plantId = allowed.firstOrNull?.id;
+  }
+
+  void _rememberSchema() {
+    final schemaId = _schemaId;
+    if (schemaId == null) {
+      return;
+    }
+    _schemaContext[schemaId] = (plantId: _plantId, selectedId: _selectedId);
+  }
+
+  void _switchSchema(String id) {
+    _rememberSchema();
+    _schemaId = id;
+    final schema = findSchema(_workspace, id);
+    final saved = _schemaContext[id];
+    final selected = saved?.selectedId;
+    final selectionFits =
+        selected != null &&
+        schema != null &&
+        (schema.plantIds.contains(selected) ||
+            schema.assetIds.contains(selected) ||
+            schema.systemIds.contains(selected) ||
+            schema.flowIds.contains(selected));
+    _plantId = saved?.plantId;
+    _selectedId = selectionFits ? selected : null;
+    _creating = null;
+    _errors = {};
+    _loadForm();
   }
 
   void _select(String id) {
@@ -191,6 +239,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
     _zone = ItOtZone.undefined;
     _flowSource = null;
     _flowTarget = null;
+    _layoutX.text = '';
+    _layoutY.text = '';
 
     if (_creating != null) {
       switch (_creating!) {
@@ -235,6 +285,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _parentId = asset.parentId;
       _icon = asset.iconKey;
       _functions.addAll(asset.functions);
+      _loadLayout(id);
       return;
     }
     final system = findSystem(workspace, id);
@@ -246,6 +297,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _zone = system.zone;
       _functions.addAll(system.functions);
       _scope.addAll(system.scopeIds);
+      _loadLayout(id);
       return;
     }
     final flow = findFlow(workspace, id);
@@ -260,6 +312,34 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _flowSource = flow.sourceId;
       _flowTarget = flow.targetId;
     }
+  }
+
+  void _loadLayout(String id) {
+    final point = _activeSchema()?.layout[id];
+    if (point == null) {
+      return;
+    }
+    _layoutX.text = _layoutText(point.x);
+    _layoutY.text = _layoutText(point.y);
+  }
+
+  String _layoutText(double value) {
+    if (value == value.roundToDouble()) {
+      return value.round().toString();
+    }
+    return value.toString();
+  }
+
+  double? _parseLayout(String raw) {
+    final trimmed = raw.trim().replaceAll(',', '.');
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final value = double.tryParse(trimmed);
+    if (value == null || !value.isFinite) {
+      return null;
+    }
+    return value;
   }
 
   String? _selectedOrganization() {
@@ -316,6 +396,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final mutation = _mutation(before, now);
     if (!mutation.isValid || mutation.workspace == null) {
       setState(() => _errors = _issueMap(mutation.issues));
+      if (_inspectorScroll.hasClients) {
+        _inspectorScroll.jumpTo(0);
+      }
       return;
     }
     var next = mutation.workspace!;
@@ -561,6 +644,332 @@ class _WorkspacePageState extends State<WorkspacePage> {
     setState(_loadForm);
   }
 
+  Future<void> _applyTemplate() async {
+    final line = findAsset(_workspace, _selectedId ?? '');
+    if (line == null || line.kind != AssetKind.line) {
+      return;
+    }
+    final templateId = await showDialog<String>(
+      context: context,
+      builder: (context) => TemplatePreviewDialog(lineName: line.name),
+    );
+    if (templateId == null || !mounted) {
+      return;
+    }
+    final before = _workspace;
+    final mutation = applyMachineTemplate(
+      before,
+      templateId: templateId,
+      lineId: line.id,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    var next = mutation.workspace!;
+    final schemaId = _schemaId;
+    if (schemaId != null) {
+      final previous = {for (final asset in before.assets) asset.id};
+      final layout = findSchema(next, schemaId)?.layout;
+      var maxX = 0.0;
+      for (final point in layout?.values ?? const <LayoutPoint>[]) {
+        if (point.x > maxX) {
+          maxX = point.x;
+        }
+      }
+      var index = 0;
+      for (final asset in next.assets) {
+        if (previous.contains(asset.id)) {
+          continue;
+        }
+        index += 1;
+        final linked = linkToSchema(
+          next,
+          schemaId: schemaId,
+          assetId: asset.id,
+          at: LayoutPoint(maxX + index * 160, 0),
+          now: widget.repository.now,
+        );
+        if (linked.workspace != null) {
+          next = linked.workspace!;
+        }
+      }
+    }
+    await widget.repository.saveWorkspace(next);
+  }
+
+  Future<void> _confirmSuggestion(FlowSuggestion suggestion) async {
+    final result = await showDialog<ConfirmedSuggestion>(
+      context: context,
+      builder: (context) => SuggestionConfirmDialog(
+        sourceLabel: _entityLabel(suggestion.sourceId),
+        targetLabel: _entityLabel(suggestion.targetId),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final mutation = addFlow(
+      _workspace,
+      name: result.name,
+      sourceId: suggestion.sourceId,
+      targetId: suggestion.targetId,
+      exchangedData: result.exchangedData,
+      protocol: result.protocol,
+      purpose: result.purpose,
+      status: FlowStatus.confirmed,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    var next = mutation.workspace!;
+    final added = _addedId(_workspace, next);
+    if (added != null && _schemaId != null) {
+      final linked = linkToSchema(
+        next,
+        schemaId: _schemaId!,
+        flowId: added,
+        now: widget.repository.now,
+      );
+      if (linked.workspace != null) {
+        next = linked.workspace!;
+      }
+    }
+    await widget.repository.saveWorkspace(next);
+  }
+
+  Future<void> _createSchema() async {
+    final plants = [
+      for (final asset in _workspace.assets)
+        if (asset.kind == AssetKind.plant) asset,
+    ];
+    final draft = await showDialog<SchemaDraft>(
+      context: context,
+      builder: (context) => SchemaDraftDialog(plants: plants),
+    );
+    if (draft == null || !mounted) {
+      return;
+    }
+    final mutation = addSchema(
+      _workspace,
+      name: draft.name,
+      plantIds: draft.plantIds,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    await widget.repository.saveWorkspace(mutation.workspace!);
+    if (!mounted) {
+      return;
+    }
+    final created = mutation.workspace!.schemas.last.id;
+    setState(() => _switchSchema(created));
+  }
+
+  Future<void> _copySchema() async {
+    final schema = _activeSchema();
+    if (schema == null) {
+      return;
+    }
+    final draft = await showDialog<SchemaDraft>(
+      context: context,
+      builder: (context) => SchemaDraftDialog(
+        plants: const [],
+        initialName: 'Còpia de ${schema.name}',
+        title: 'Copia l\'esquema',
+        confirmLabel: 'Copia',
+      ),
+    );
+    if (draft == null || !mounted) {
+      return;
+    }
+    final mutation = copySchema(
+      _workspace,
+      schemaId: schema.id,
+      name: draft.name,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    await widget.repository.saveWorkspace(mutation.workspace!);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _switchSchema(mutation.workspace!.schemas.last.id));
+  }
+
+  Future<void> _saveLayout() async {
+    final id = _selectedId;
+    final schemaId = _schemaId;
+    if (id == null || schemaId == null) {
+      return;
+    }
+    final x = _parseLayout(_layoutX.text);
+    final y = _parseLayout(_layoutY.text);
+    if (x == null || y == null) {
+      setState(() {
+        _errors = {
+          'layout': workspaceIssueMessage(WorkspaceIssueCode.invalidField),
+        };
+      });
+      return;
+    }
+    final mutation = updateSchemaLayout(
+      _workspace,
+      schemaId: schemaId,
+      entityId: id,
+      at: LayoutPoint(x, y),
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    setState(() => _errors = {});
+    await widget.repository.saveWorkspace(mutation.workspace!);
+  }
+
+  Future<void> _createSnapshot() async {
+    final schema = _activeSchema();
+    if (schema == null || !mounted) {
+      return;
+    }
+    final note = await showDialog<String>(
+      context: context,
+      builder: (context) => NoteDialog(
+        title: 'Nova instantània',
+        dateLabel: 'Data: ${encodeTimestamp(widget.repository.now)}',
+        noteKey: workspaceSnapshotNoteKey,
+        confirmKey: createSnapshotKey,
+        cancelKey: cancelSnapshotKey,
+        confirmLabel: 'Crea la instantània',
+      ),
+    );
+    if (note == null || !mounted) {
+      return;
+    }
+    final mutation = createSnapshot(
+      _workspace,
+      schemaId: schema.id,
+      note: note,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    await widget.repository.saveWorkspace(mutation.workspace!);
+  }
+
+  Future<void> _openVersions() async {
+    final versionId = await showDialog<String>(
+      context: context,
+      builder: (context) => VersionListDialog(versions: _workspace.versions),
+    );
+    if (versionId == null || !mounted) {
+      return;
+    }
+    final origin = findVersion(_workspace, versionId);
+    if (origin == null) {
+      return;
+    }
+    final lines = [
+      for (final item in snapshotDivergences(_workspace, origin.snapshot))
+        '${item.entityId}: ${item.message}',
+    ];
+    final note = await showDialog<String>(
+      context: context,
+      builder: (context) => NoteDialog(
+        title: 'Restaura la instantània',
+        dateLabel:
+            'Origen ${origin.id} · ${encodeTimestamp(origin.createdAt)}. La versió nova referencia aquest origen. L\'inventari i l\'OEE no es modifiquen.',
+        noteKey: workspaceRestoreNoteKey,
+        confirmKey: confirmRestoreKey,
+        cancelKey: cancelRestoreKey,
+        confirmLabel: 'Crea la versió',
+        body: [
+          const SizedBox(height: 8),
+          if (lines.isEmpty)
+            const Text('L\'inventari vigent coincideix amb la captura.')
+          else
+            for (final line in lines) Text(line),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+    if (note == null || !mounted) {
+      return;
+    }
+    final mutation = restoreSnapshot(
+      _workspace,
+      versionId: origin.id,
+      note: note,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    await widget.repository.saveWorkspace(mutation.workspace!);
+  }
+
+  Future<void> _exportBackup() {
+    final exporter = widget.exportJson ?? plant_io.downloadJsonFile;
+    return exporter(
+      'mapaisa95oee-backup.json',
+      widget.repository.exportBackupJson(),
+    );
+  }
+
+  Future<void> _importBackup() async {
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (context) => ImportJsonDialog(
+        onPickFile: widget.importJson ?? plant_io.pickJsonFile,
+      ),
+    );
+    if (raw == null || !mounted) {
+      return;
+    }
+    final parsed = widget.repository.previewBackup(raw);
+    if (!parsed.isValid || parsed.workspace == null) {
+      widget.repository.rejectImport(parsed.issues);
+      return;
+    }
+    final incoming = parsed.workspace!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => WorkspaceReplaceDialog(
+        workspace: incoming,
+        onDownloadPrior: () {
+          _exportBackup();
+        },
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    await widget.repository.replaceWithBackup(raw, confirm: true);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedId = null;
+      _creating = null;
+      _plantId = null;
+      _schemaId = null;
+      _errors = {};
+      _loadForm();
+    });
+  }
+
   Future<void> _loadExample() async {
     final repo = widget.repository;
     if (repo.exampleNeedsConfirm) {
@@ -726,10 +1135,16 @@ class _WorkspacePageState extends State<WorkspacePage> {
       y += header + body;
     }
 
-    List<String> ids(ItOtZone zone) => [
-      for (final system in systems)
-        if (system.zone == zone) system.id,
-    ];
+    List<String> ids(ItOtZone zone) {
+      final layout = _activeSchema()?.layout ?? const <String, LayoutPoint>{};
+      final list = [
+        for (final system in systems)
+          if (system.zone == zone) system.id,
+      ];
+      list.sort((a, b) => _layoutOrder(layout, a, b));
+      return list;
+    }
+
     place('it', ids(ItOtZone.it), 52);
     place('boundary', ids(ItOtZone.boundary), 86);
     place('ot', ids(ItOtZone.ot), 44);
@@ -738,9 +1153,35 @@ class _WorkspacePageState extends State<WorkspacePage> {
       place('undefined', undefined, 44);
     }
     if (cited.isNotEmpty) {
-      place('cited', [for (final asset in cited) asset.id], 52);
+      final layout = _activeSchema()?.layout ?? const <String, LayoutPoint>{};
+      final citedIds = [for (final asset in cited) asset.id]
+        ..sort((a, b) => _layoutOrder(layout, a, b));
+      place('cited', citedIds, 52);
     }
     return _Geometry(boxes, Size(width, math.max(y + 12, 460)), flows);
+  }
+
+  int _layoutOrder(Map<String, LayoutPoint> layout, String left, String right) {
+    final a = layout[left];
+    final b = layout[right];
+    if (a == null && b == null) {
+      return left.compareTo(right);
+    }
+    if (a == null) {
+      return 1;
+    }
+    if (b == null) {
+      return -1;
+    }
+    final dx = a.x.compareTo(b.x);
+    if (dx != 0) {
+      return dx;
+    }
+    final dy = a.y.compareTo(b.y);
+    if (dy != 0) {
+      return dy;
+    }
+    return left.compareTo(right);
   }
 
   String _query() => _search.text.trim().toLowerCase();
@@ -1316,13 +1757,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Widget _flowLabel(ExchangeFlow flow, _Geometry geometry) {
-    final from = geometry.boxes[flow.sourceId]!.rect.center;
-    final to = geometry.boxes[flow.targetId]!.rect.center;
-    final mid = Offset((from.dx + to.dx) / 2, (from.dy + to.dy) / 2);
-    final left = mid.dx
+    final target = geometry.boxes[flow.targetId]!.rect;
+    final left = (target.right + 8)
         .clamp(0.0, math.max(0, geometry.size.width - 150))
         .toDouble();
-    final top = mid.dy
+    final top = target.top
         .clamp(0.0, math.max(0, geometry.size.height - 28))
         .toDouble();
     return Positioned(
@@ -1445,9 +1884,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Widget _plantControl() {
+    final schema = _activeSchema();
     final plants = [
       for (final asset in _workspace.assets)
-        if (asset.kind == AssetKind.plant) asset,
+        if (asset.kind == AssetKind.plant &&
+            (schema == null ||
+                schema.plantIds.isEmpty ||
+                schema.plantIds.contains(asset.id)))
+          asset,
     ];
     if (plants.isEmpty) {
       return const Text('Cap planta', style: TextStyle(color: steel));
@@ -1472,13 +1916,63 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return Text('Esquema: ${schemas.single.name}');
     }
     return DropdownButton<String>(
+      key: workspaceSchemaPickerKey,
       value: schemas.any((item) => item.id == _schemaId) ? _schemaId : null,
       items: [
         for (final schema in schemas)
           DropdownMenuItem(value: schema.id, child: Text(schema.name)),
       ],
-      onChanged: (value) => setState(() => _schemaId = value),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _switchSchema(value));
+        }
+      },
     );
+  }
+
+  List<Widget> _assistedSection() {
+    final suggestions = _assist
+        ? suggestDeclaredScopes(_workspace, schemaId: _schemaId)
+        : const <FlowSuggestion>[];
+    final visible = [
+      for (final suggestion in suggestions)
+        if (!_dismissedSuggestions.contains(suggestion.key)) suggestion,
+    ];
+    return [
+      const SizedBox(height: 16),
+      const Text(
+        'Relacions assistides',
+        style: TextStyle(fontWeight: FontWeight.w600),
+      ),
+      const Text(
+        'Cada suggeriment es confirma o es descarta sol. No s\'explora la xarxa.',
+      ),
+      OutlinedButton(
+        key: workspaceSuggestKey,
+        style: workspaceControlStyle,
+        onPressed: () => setState(() => _assist = true),
+        child: const Text('Suggereix relacions'),
+      ),
+      if (_assist && visible.isEmpty) const Text('Cap suggeriment pendent.'),
+      for (final suggestion in visible) ...[
+        Text(
+          'Suggeriment: ${_entityLabel(suggestion.sourceId)} → ${_entityLabel(suggestion.targetId)}',
+        ),
+        OutlinedButton(
+          key: Key('discard-suggestion-${suggestion.key}'),
+          style: workspaceControlStyle,
+          onPressed: () =>
+              setState(() => _dismissedSuggestions.add(suggestion.key)),
+          child: const Text('Descarta'),
+        ),
+        OutlinedButton(
+          key: Key('confirm-suggestion-${suggestion.key}'),
+          style: workspaceControlStyle,
+          onPressed: () => _confirmSuggestion(suggestion),
+          child: const Text('Confirma'),
+        ),
+      ],
+    ];
   }
 
   Widget _inspector() {
@@ -1486,6 +1980,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       key: workspaceInspectorKey,
       color: panel,
       child: ListView(
+        controller: _inspectorScroll,
         scrollCacheExtent: const ScrollCacheExtent.pixels(8000),
         padding: const EdgeInsets.all(12),
         children: [
@@ -1497,6 +1992,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
           if (widget.repository.banner != null) Text(widget.repository.banner!),
           if (_errors['_form'] != null) _error('_form'),
           ..._inspectorBody(),
+          ..._assistedSection(),
         ],
       ),
     );
@@ -1590,6 +2086,41 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
     if (draftingFlow) {
       children.addAll(_flowFields());
+    }
+    if (asset?.kind == AssetKind.line && !creating) {
+      children.add(const SizedBox(height: 8));
+      children.add(
+        OutlinedButton.icon(
+          key: workspaceTemplateKey,
+          style: workspaceControlStyle,
+          onPressed: widget.repository.status == SaveStatus.saving
+              ? null
+              : _applyTemplate,
+          icon: const Icon(Icons.precision_manufacturing_outlined),
+          label: const Text('Aplica una plantilla'),
+        ),
+      );
+    }
+    if (!creating && (asset != null || system != null) && _schemaId != null) {
+      children.add(const SizedBox(height: 8));
+      children.add(const Text('Disposició a l\'esquema actiu'));
+      children.add(
+        _textField(workspaceLayoutXKey, _layoutX, 'Posició X', null),
+      );
+      children.add(
+        _textField(workspaceLayoutYKey, _layoutY, 'Posició Y', null),
+      );
+      children.add(_error('layout'));
+      children.add(
+        OutlinedButton(
+          key: workspaceSaveLayoutKey,
+          style: workspaceControlStyle,
+          onPressed: widget.repository.status == SaveStatus.saving
+              ? null
+              : _saveLayout,
+          child: const Text('Desa la disposició'),
+        ),
+      );
     }
     if (asset?.kind == AssetKind.line) {
       children.add(const SizedBox(height: 8));
@@ -2042,7 +2573,61 @@ class _WorkspacePageState extends State<WorkspacePage> {
                           key: workspaceSaveStatusKey,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text('Instantànies: ${_workspace.versions.length}'),
+                        OutlinedButton(
+                          key: workspaceNewSchemaKey,
+                          style: workspaceControlStyle,
+                          onPressed:
+                              widget.repository.status == SaveStatus.saving
+                              ? null
+                              : _createSchema,
+                          child: const Text('Nou esquema'),
+                        ),
+                        if (_schemaId != null)
+                          OutlinedButton(
+                            key: workspaceCopySchemaKey,
+                            style: workspaceControlStyle,
+                            onPressed:
+                                widget.repository.status == SaveStatus.saving
+                                ? null
+                                : _copySchema,
+                            child: const Text('Copia l\'esquema'),
+                          ),
+                        OutlinedButton(
+                          key: workspaceSnapshotKey,
+                          style: workspaceControlStyle,
+                          onPressed:
+                              widget.repository.status == SaveStatus.saving ||
+                                  _schemaId == null
+                              ? null
+                              : _createSnapshot,
+                          child: const Text('Nova instantània'),
+                        ),
+                        OutlinedButton(
+                          key: workspaceVersionsKey,
+                          style: workspaceControlStyle,
+                          onPressed: _openVersions,
+                          child: Text(
+                            'Versions: ${_workspace.versions.length}',
+                          ),
+                        ),
+                        OutlinedButton(
+                          key: workspaceExportKey,
+                          style: workspaceControlStyle,
+                          onPressed:
+                              widget.repository.status == SaveStatus.saving
+                              ? null
+                              : _exportBackup,
+                          child: const Text('Exporta còpia'),
+                        ),
+                        OutlinedButton(
+                          key: workspaceImportKey,
+                          style: workspaceControlStyle,
+                          onPressed:
+                              widget.repository.status == SaveStatus.saving
+                              ? null
+                              : _importBackup,
+                          child: const Text('Importa còpia'),
+                        ),
                       ]
                       .map(
                         (child) => Padding(
