@@ -9,10 +9,16 @@ const Key totalUnitsKey = Key('totalUnits');
 const Key goodUnitsKey = Key('goodUnits');
 
 class OeeForm extends StatefulWidget {
-  const OeeForm({super.key, this.onOpenMap, this.onOpenData});
+  const OeeForm({
+    super.key,
+    this.onOpenMap,
+    this.onOpenData,
+    this.onOpenEngine,
+  });
 
   final VoidCallback? onOpenMap;
   final VoidCallback? onOpenData;
+  final VoidCallback? onOpenEngine;
 
   @override
   State<OeeForm> createState() => _OeeFormState();
@@ -70,6 +76,16 @@ class _OeeFormState extends State<OeeForm> {
                       ),
                       onPressed: widget.onOpenData,
                       child: const Text('Dades locals'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (widget.onOpenEngine != null) ...[
+                    OutlinedButton(
+                      style: const ButtonStyle(
+                        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+                      ),
+                      onPressed: widget.onOpenEngine,
+                      child: const Text('Càlcul amb unitats'),
                     ),
                     const SizedBox(height: 12),
                   ],

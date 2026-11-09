@@ -177,25 +177,25 @@ test/oee_engine_panel_test.dart
 
 ## T12 — Spec
 
-- [ ] Afegir la secció 15, el pla i la traça abans del codi.
+- [x] Afegir la secció 15, el pla i la traça abans del codi.
 
 ## T13 — Motor
 
-- [ ] Parseig de decimals, enters, milers ambigus, buits, NaN i infinits.
-- [ ] `c` canònic, canvi d'unitat sense encadenar, incoherència d'unitat.
-- [ ] Indicadors de la secció 5, inclosos zeros, R > 1 i G > N.
-- [ ] Pastís en minuts, residu numèric i rebuig de porcions negatives.
+- [x] Parseig de decimals, enters, milers ambigus, buits, NaN i infinits.
+- [x] `c` canònic, canvi d'unitat sense encadenar, incoherència d'unitat.
+- [x] Indicadors de la secció 5, inclosos zeros, R > 1 i G > N.
+- [x] Pastís en minuts, residu numèric i rebuig de porcions negatives.
 
 ## T14 — Pantalla
 
-- [ ] Quatre indicadors, explicacions i pastís.
-- [ ] 48 dp, focus visible, teclat i 360 px.
-- [ ] El torn US-1 segueix a `79.2 %`.
-- [ ] La línia mostra el quadre sense escriure registres.
+- [x] Quatre indicadors, explicacions i pastís.
+- [x] 48 dp, focus visible, teclat i 360 px.
+- [x] El torn US-1 segueix a `79.2 %`.
+- [x] La línia mostra el quadre sense escriure registres.
 
 ## T15 — Verificació
 
-- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome a 1280 × 800 i 360 px.
+- [x] `flutter analyze`, `flutter test`, `flutter build web` i Chrome a 1280 × 800 i 360 px.
 
 ## Fora de la PR D
 

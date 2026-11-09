@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data_foundation_page.dart';
+import 'oee_engine_panel.dart';
 import 'oee_form.dart';
 import 'plant_map_page.dart';
 import 'plant_store.dart';
@@ -37,7 +38,7 @@ class OeeApp extends StatefulWidget {
   State<OeeApp> createState() => _OeeAppState();
 }
 
-enum _Screen { oee, map, data }
+enum _Screen { oee, engine, map, data }
 
 class _OeeAppState extends State<OeeApp> {
   _Screen _screen = _Screen.oee;
@@ -47,6 +48,7 @@ class _OeeAppState extends State<OeeApp> {
     final workspace = widget.workspace;
     final title = switch (_screen) {
       _Screen.oee => 'Calculador OEE',
+      _Screen.engine => 'Càlcul OEE',
       _Screen.map => 'Mapa ISA-95',
       _Screen.data => 'Dades locals',
     };
@@ -74,11 +76,19 @@ class _OeeAppState extends State<OeeApp> {
           onOpenOee: () => setState(() => _screen = _Screen.oee),
           onOpenMap: () => setState(() => _screen = _Screen.map),
         ),
+        _Screen.engine => OeeEnginePage(
+          onOpenCalculator: () => setState(() => _screen = _Screen.oee),
+          onOpenMap: () => setState(() => _screen = _Screen.map),
+          onOpenData: workspace == null
+              ? null
+              : () => setState(() => _screen = _Screen.data),
+        ),
         _ => OeeForm(
           onOpenMap: () => setState(() => _screen = _Screen.map),
           onOpenData: workspace == null
               ? null
               : () => setState(() => _screen = _Screen.data),
+          onOpenEngine: () => setState(() => _screen = _Screen.engine),
         ),
       },
     );

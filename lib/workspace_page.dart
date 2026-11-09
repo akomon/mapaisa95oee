@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'workspace_model.dart';
 import 'workspace_repository.dart';
 import 'workspace_theme.dart';
+import 'oee_engine_panel.dart';
 
 const Key workspaceTreeKey = Key('workspaceTree');
 const Key workspaceInspectorKey = Key('workspaceInspector');
@@ -1595,7 +1596,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       children.add(const SizedBox(height: 8));
       children.add(
         const Text(
-          'El càlcul OEE d\'aquesta pantalla no és el de la secció 5. El calculador US-1 continua disponible.',
+          'El calculador US-1 continua disponible. El quadre de sota és el càlcul de la secció 5.',
         ),
       );
       if (widget.onOpenOee != null) {
@@ -1608,6 +1609,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
           ),
         );
       }
+      children.add(const SizedBox(height: 8));
+      children.add(OeeEnginePanel(lineName: asset!.name));
     }
     children.add(const SizedBox(height: 8));
     children.add(
