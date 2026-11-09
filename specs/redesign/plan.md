@@ -112,3 +112,52 @@ Després, Chrome real a 1280 × 800 i a 360 px: densitat, flux manual, teclat, d
 - Una fusió amb conflicte conserva el canònic i el text cru. L'usuari ha de descarregar-lo per veure el detall no aplicat.
 - El mapa antic, si algú el construeix fora de `main.dart`, encara escriuria la clau. L'obertura següent el tornaria a reconciliar.
 - La maqueta mostra un pastís OEE i etiquetes de nivell que aquesta PR no ha de copiar.
+
+# Pla: plantilles, esquemes i versions (PR C)
+
+Spec: [spec.md](spec.md), secció 14. Tasques: [tasks.md](tasks.md).
+
+Aquesta PR és només la PR C. El codi es commita després d'aquesta actualització de la spec. No es implementen les PR D ni E.
+
+## Enfocament
+
+Les operacions noves són pures sobre el `Workspace` i es desen pel repositori existent. No es puja `formatVersion`. No s'afegeix cap escriptor de la clau legacy. La substitució completa continua sent `replaceWithBackup`: valida el document sencer i, només si la transacció acaba, substitueix `workspace` i `priorBackup` junts.
+
+Les plantilles només creen màquines. Els suggeriments es calculen en memòria i no es desen fins a la confirmació d'una fila. Els esquemes nous no copien fluxos. La restauració afegeix una versió; no reescriu mestres ni OEE. El mapa conserva les franges de la PR B i n'ordena les fitxes amb la disposició de l'esquema actiu.
+
+## Estructura
+
+```
+lib/flow_suggestions.dart        # parelles d'abast, sense xarxa i sense escriure
+lib/workspace_model.dart         # plantilles, esquemes, instantànies, restauració
+lib/workspace_page.dart          # previsualització, suggeriments, esquemes, versions, importació
+test/phase_c_domain_test.dart
+test/workspace_page_test.dart
+test/workspace_codec_test.dart
+test/workspace_repository_test.dart
+```
+
+## Decisions d'aquesta PR
+
+- Catàleg tancat `envasat` i `cambra`, només nom i icona de màquina.
+- El suggeriment visible no és un flux. Confirmar-ne un crea un sol flux `confirmed`.
+- La disposició es persisteix al camp `layout` ja especificat. La selecció contextual de sessió no és un camp nou del JSON.
+- El snapshot es tanca amb els pares i els extrems perquè la còpia el pugui validar sol.
+- La reconciliació és un informe. Confirmar la restauració no aplica aquest informe sobre l'inventari.
+- El calculador US-1 no es modifica.
+
+## Verificació
+
+```
+flutter analyze
+flutter test
+flutter build web
+```
+
+Després, Chrome real a 1280 × 800 i a 360 px: plantilla amb previsualització, flux manual, suggeriment descartat i confirmat, dos esquemes, instantània, restauració sense mutar OEE, importació rebutjada, cancel·lada i fallida, recàrrega, teclat i focus. La quota real del navegador només es reporta si es reprodueix.
+
+## Riscos
+
+- Una instantània gran copia els mestres citats. No hi ha purga. L'avís d'espai de la PR A es conserva.
+- La selecció per esquema viu a la sessió. Després de recarregar, la disposició torna del document i la selecció torna a ser d'aquell esquema, no necessàriament l'última fitxa.
+- La fallada de quota real no es pot forçar des del codi de release. La interrupció es prova amb la base en memòria.

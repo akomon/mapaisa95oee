@@ -721,3 +721,65 @@ L'inspector edita la selecció en una columna: nom, descripció, icona, pare, fu
 A menys de 1100 px, i en concret a 360 px, l'arbre i l'inspector són panells que s'obren i es tanquen. El mapa continua muntat. Els formularis segueixen en una columna. El mapa es pot apropar, allunyar, desplaçar i enquadrar sense que arrossegar sigui l'única via. La selecció, l'edició, la confirmació i la cancel·lació es poden fer amb teclat. El focus es veu. Suggerit, confirmat, desat i error es llegeixen per text.
 
 Seleccionar una línia o un sistema no canvia la planta ni l'esquema actius. No cal una planta sencera per crear el primer element. El primer esquema existent, si n'hi ha, rep les altes noves perquè el mapa les pugui mostrar. Això no obre l'editor d'esquemes de la PR C.
+
+## 14. PR C — plantilles, suggeriments, esquemes, versions i còpia
+
+Aquesta secció és el contracte de la PR C. No afegeix requisits de producte ni reobre la secció 8. Tanca el que les seccions 11 i 13 deixaven per a C, i fa visible a l'espai de treball la substitució completa que la PR A ja validava. Es conserva la UI compacta de la PR B, la reconciliació legacy de la secció 13.2 i la separació entre snapshots i OEE. No hi ha backend ni lectura de xarxa.
+
+### 14.1 Què es tanca i què es deixa
+
+| AC | PR C |
+| --- | --- |
+| AC-05 | Tancat. Abans d'aplicar una plantilla es mostren les màquines i les icones. La màquina creada des d'una línia només en rep el pare. Ni la plantilla ni un canvi d'icona assignen funcions ni fluxos confirmats. |
+| AC-06 | El flux manual de la PR B es conserva i es torna a comprovar al navegador. S'hi afegeix la part assistida: cada suggeriment es veu com a suggeriment, es descarta sol i només entra al model amb una confirmació explícita d'aquell suggeriment. Cap exploració de xarxa. Un abast compartit no crea un flux. |
+| AC-07 | Tancat a la UI. Es poden crear, copiar, desar i tornar a obrir diversos esquemes i plantes. La disposició desada es recupera. La planta i la selecció visibles pertanyen a l'esquema obert. L'exemple alimentari continua sense empresa = L4 ni línia = L2. |
+| AC-08 | Es conserva. Esquemes, versions i OEE surten d'IndexedDB en recarregar. |
+| AC-09, AC-10 | Es conserven i es comproven de nou, també des de l'espai. La substitució és sencera: prevalidació, impacte, confirmació, còpia prèvia, i cap base parcial si es cancel·la, si el JSON és invàlid o si la transacció falla. |
+| AC-11 | Tancat. Una instantània manual té data i nota. Restaurar-la afegeix una versió nova que referencia l'origen, amb el mateix snapshot. No sobreescriu versions anteriors, ni els mestres vigents, ni l'OEE. |
+| AC-01…AC-04, AC-19 | Es conserven. Aquesta PR no els reobre. |
+| AC-12…AC-18 | Diferits a les PR D i E. El calculador US-1 es conserva. No es calculen indicadors nous. |
+| AC-20 | Parcial: els controls nous d'aquesta PR fan 48 dp, es poden operar amb teclat, el focus es veu i a 360 px no es retallen. La passada integrada continua fora. |
+| AC-21 | Parcial d'aquesta PR: anàlisi, tests, build web i Chrome real de l'abast C, inclòs el flux manual. La passada integrada d'R6 continua fora. |
+
+Fora de la PR C: el motor OEE de la secció 5, l'històric i els filtres, l'agregació, el PDF, el backend, la descoberta de xarxa, la purga de versions i una closca offline. La SPEC sencera no queda tancada.
+
+### 14.2 Plantilles i màquina de línia
+
+El catàleg és tancat i només descriu màquines. No té funcions, zona, tipus de sistema ni fluxos.
+
+| Id | Nom | Màquines i icona |
+| --- | --- | --- |
+| `envasat` | Envasat | Omplidora, icona `machine`. Taponadora, icona `machine`. |
+| `cambra` | Cambra | Sensor de temperatura, icona `machine`. |
+
+Amb una línia seleccionada, `Aplica una plantilla` obre la previsualització: nom de cada màquina i la seva icona. `Cancel·la` no escriu. `Aplica plantilla` crea aquelles màquines amb pare la línia, les funcions buides i cap flux. Els IDs són nous. Si la línia ja té funcions, no es copien.
+
+Crear una màquina des de l'alta existent, amb una línia com a pare, també hereta només la pertinença. Les funcions queden les que l'usuari marca, inicialment cap. Canviar la icona d'una màquina o d'un sistema no canvia les funcions, la zona, el tipus ni els fluxos.
+
+### 14.3 Suggeriments assistits
+
+`Suggereix relacions` calcula, sense escriure, parelles ja declarades: un sistema i un actiu del seu `scopeIds`. Si hi ha un esquema actiu, la parella ha de pertànyer a aquest esquema. No es proposa un flux entre dos sistemes pel fet de compartir abast. No es proposa una parella que ja té un flux amb el mateix origen i destí. El càlcul no obre sockets ni llegeix la xarxa.
+
+Cada fila diu `Suggeriment`, mostra origen i destí, i té `Descarta` i `Confirma`. Descartar treu només aquella fila i no escriu. Confirmar obre el formulari d'aquell flux, amb dades, protocol o desconegut i finalitat. Acceptar-lo crea un sol flux `confirmed`. Cancel·lar el formulari no crea el flux. No hi ha confirmació massiva. Fins que no s'accepta un suggeriment, el document no guanya fluxos.
+
+### 14.4 Esquemes múltiples
+
+`Nou esquema` demana nom i plantes. El nom buit es rebutja. L'esquema inclou les plantes triades, els actius descendents i els sistemes que abasten algun d'aquests actius. No copia fluxos ni funcions. La disposició inicial és una graella de pas 160. `Copia l'esquema` duplica pertinença i disposició amb un ID nou. No duplica versions ni OEE.
+
+L'ordre de les fitxes dins de cada franja IT, L3, OT o no definida segueix la disposició de l'esquema actiu. Les franges i el text que explica L3 es conserven. Editar la disposició d'un element seleccionat només canvia el punt `x`, `y` d'aquell ID a l'esquema actiu.
+
+Canviar d'esquema restaura la planta i la selecció que aquell esquema tenia en la sessió, si encara en formen part. Si no, la planta visible és una planta de l'esquema i la selecció no queda en un element de l'altre. Després de recarregar, s'obre un esquema desat i la disposició és la del document. La selecció inicial és d'aquest esquema.
+
+### 14.5 Instantànies i restauració
+
+`Nova instantània` mostra la data UTC que es desarà i un camp de nota. La nota pot ser buida. Cancel·lar no escriu. Confirmar afegeix una versió: `createdAt` és aquesta data, `parentVersionId` és `null`, `schemaId` és l'esquema actiu. El snapshot copia l'esquema i el tancament necessari perquè es validi sol: organitzacions pare, actius citats amb els seus avantpassats, sistemes citats o extrems, i fluxos citats. No conté OEE, revisions ni versions. Els mestres vius no es modifiquen. Les versions ja existents queden iguals.
+
+`Restaura` mostra la data d'origen, la nota nova, l'ID d'origen i un informe de reconciliació: IDs capturats absents de l'inventari, i IDs presents amb nom, pare, funcions, abast, extrems o disposició diferents. L'informe no escriu. Cancel·lar no escriu. Confirmar afegeix una versió nova. El seu `parentVersionId` és l'ID d'origen. El snapshot nou és el mateix contingut que el d'origen. Les versions anteriors, els mestres, els esquemes i l'OEE queden com eren. No hi ha botó que copiï el snapshot sobre l'inventari.
+
+### 14.6 Substitució completa
+
+L'espai ofereix `Exporta còpia` i `Importa còpia`, amb el mateix repositori que `Dades locals`. `formatVersion` continua sent 1.
+
+Abans d'escriure es valida el conjunt: JSON, versió, dominis, jerarquia, abasts, extrems de flux, IDs duplicats, orfes, cicles de jerarquia i cicles de versions. Un cicle de flux és vàlid. Si hi ha incidències, es mostra el missatge i no s'obre la substitució.
+
+Si és vàlid, es mostren els recomptes d'entrada, el text que la substitució no fusiona identificadors, i els botons `Descarrega la còpia prèvia`, `Cancel·la` i `Substitueix les dades`. Cancel·lar no escriu. Confirmar escriu el document nou i la còpia prèvia en una sola transacció. Si la transacció falla, es conserva el document anterior i l'estat no és `Desat`. Una quota real del navegador només es reporta si es reprodueix. La fallada injectada a la base en memòria continua sent la prova d'interrupció.

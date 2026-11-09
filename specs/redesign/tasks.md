@@ -41,7 +41,7 @@ Extretes de [spec.md](spec.md). La spec es commita abans de qualsevol codi. Les 
 ## Fora d'aquesta PR
 
 - [x] PR B: espai de treball, inventari, mapa IT/OT i fluxos manuals. El detall executable és la llista següent.
-- [ ] PR C: plantilles, suggeriments, esquemes múltiples a la UI, snapshots i restauració (AC-11).
+- [x] PR C: plantilles, suggeriments, esquemes múltiples, snapshots i restauració (AC-11). El detall executable és la llista de la PR C.
 - [ ] PR D: motor OEE de la secció 5.
 - [ ] PR E: històric i filtres.
 - [ ] QA integrada d'R6.
@@ -75,7 +75,40 @@ Extretes de [spec.md](spec.md), secció 13. Aquesta actualització es commita ab
 
 ## Fora de la PR B
 
-- [ ] PR C: plantilles, suggeriments assistits, esquemes múltiples i restauració.
+- [x] PR C: plantilles, suggeriments assistits, esquemes múltiples, snapshots, restauració i substitució completa. El detall executable és la llista següent.
+- [ ] PR D: motor OEE de la secció 5.
+- [ ] PR E: històric i filtres.
+- [ ] QA integrada d'R6.
+
+# Tasques: plantilles, esquemes i versions (PR C)
+
+Extretes de [spec.md](spec.md), secció 14. Aquesta actualització es commita abans del codi de la PR C.
+
+## T8 — Spec de la PR C
+
+- [x] Afegir a `specs/redesign/` la traça de C i el que queda diferit a D, E i la QA integrada.
+- [x] Commit de la spec abans del codi.
+
+## T9 — Plantilles i suggeriments
+
+- [ ] Catàleg `envasat` i `cambra`, previsualització de màquines i icones, alta que només hereta el pare.
+- [ ] Cap plantilla ni canvi d'icona assigna funcions o fluxos confirmats.
+- [ ] Suggeriments visibles, descart individual i confirmació individual. Cap flux creat des de l'abast sol. Cap xarxa.
+
+## T10 — Esquemes, instantànies i còpia
+
+- [ ] Crear, copiar, desar i reobrir esquemes amb disposició i selecció contextual.
+- [ ] Instantània amb data i nota. Restauració que referencia l'origen, sense mutar versions prèvies, mestres ni OEE.
+- [ ] Substitució completa amb prevalidació, impacte, confirmació, còpia prèvia i cap base parcial.
+
+## T11 — Verificació
+
+- [ ] Tests dels AC d'aquesta PR, inclòs el cicle de versions i el cicle de flux.
+- [ ] `flutter analyze`, `flutter test`, `flutter build web` i Chrome real, amb el flux manual de la PR B.
+- [ ] 360 px, teclat, focus visible i objectius de 48 dp.
+
+## Fora de la PR C
+
 - [ ] PR D: motor OEE de la secció 5.
 - [ ] PR E: històric i filtres.
 - [ ] QA integrada d'R6.
