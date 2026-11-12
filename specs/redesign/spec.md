@@ -721,3 +721,45 @@ L'inspector edita la selecció en una columna: nom, descripció, icona, pare, fu
 A menys de 1100 px, i en concret a 360 px, l'arbre i l'inspector són panells que s'obren i es tanquen. El mapa continua muntat. Els formularis segueixen en una columna. El mapa es pot apropar, allunyar, desplaçar i enquadrar sense que arrossegar sigui l'única via. La selecció, l'edició, la confirmació i la cancel·lació es poden fer amb teclat. El focus es veu. Suggerit, confirmat, desat i error es llegeixen per text.
 
 Seleccionar una línia o un sistema no canvia la planta ni l'esquema actius. No cal una planta sencera per crear el primer element. El primer esquema existent, si n'hi ha, rep les altes noves perquè el mapa les pugui mostrar. Això no obre l'editor d'esquemes de la PR C.
+
+## 14. PR C — plantilles, suggeriments, esquemes i restauració
+
+Contracte executable de la PR C. No reobre les decisions de la secció 8 ni afegeix requisits a les PR A i B. Tanca AC-05, AC-06 (descoberta assistida), AC-07 (múltiples esquemes) i AC-11.
+
+### 14.1 Plantilles (AC-05)
+
+El catàleg és local i tancat. Cada plantilla només descriu màquines i la seva icona; no aporta funcions, zona, abast, fluxos ni versions. Abans d'aplicar-la, la UI mostra les màquines i les icones que es crearan. En aplicar-la sobre una línia, cada màquina nova té aquesta línia com a pare i només n'hereta la pertinença. Si l'esquema actiu existeix, les màquines noves s'hi afegeixen amb disposició pròpia; això no crea cap flux.
+
+| ID | Nom | Màquines |
+| --- | --- | --- |
+| `envasat` | Línia d'envasat | Omplidora, Taponadora, Etiquetadora |
+| `proces` | Línia de procés | Barrejador, Pasteuritzador |
+| `fred` | Línia de fred | Túnel de congelació, Cambra de refrigeració |
+
+Totes les màquines fan servir la icona física `machine`. La icona no assigna tipus, funcions, zona ni fluxos.
+
+### 14.2 Suggeriments (AC-06)
+
+La descoberta assistida d'aquesta PR no llegeix la xarxa ni genera fluxos a partir de l'abast. Un suggeriment és un flux creat manualment amb estat `suggested`. La UI els reuneix en una llista pròpia, amb origen, destí, dades, protocol o desconegut, finalitat i l'etiqueta `Suggeriment`. Descartar-lo l'elimina amb les regles d'AC-03. Confirmar-lo és una acció individual sobre aquell flux; no hi ha confirmació en bloc ni creació automàtica. Un abast compartit no crea cap flux.
+
+### 14.3 Esquemes múltiples (AC-07)
+
+Es poden crear esquemes buits o amb el contingut de les plantes triades, i copiar un esquema existent amb la seva disposició. Copiar no duplica actius, sistemes ni fluxos: el nou esquema cita els mateixos IDs. El selector existent canvia l'esquema actiu; la planta activa es conserva si pertany a l'esquema nou i, si no, passa a la primera planta de l'esquema. Un esquema pot no contenir tota la planta. Les altes noves continuen entrant al primer esquema existent o a l'esquema actiu, sense obrir un editor de disposició lliure.
+
+### 14.4 Instantànies i restauració (AC-11)
+
+Una instantània manual desa data, nota, `parentVersionId` (l'última versió del mateix esquema, si n'hi ha) i un snapshot autocontingut amb l'esquema i totes les organitzacions, actius, sistemes i fluxos vius. No inclou registres OEE, revisions de migració ni versions. Les versions anteriors no canvien.
+
+Restaurar una versió:
+
+1. No sobreescriu cap mestre viu, cap versió anterior ni cap registre OEE.
+2. Crea una versió nova amb `parentVersionId` = versió d'origen, data de restauració i nota. El snapshot nou conté l'esquema restaurat i les entitats resoltes: les que ja existeixen conserven el valor canònic viu; les que falten s'afegeixen amb l'ID i el contingut capturats.
+3. Si l'ID de l'esquema del snapshot és lliure, es conserva. Si està ocupat, l'esquema restaurat pren un ID nou i el snapshot nou el reflecteix; la resta d'IDs capturats no canvien.
+4. Abans d'aplicar, la UI mostra els IDs afegits i els conflictes (IDs que existeixen amb un valor diferent) i demana confirmació. Cancel·lar no escriu.
+5. L'esquema restaurat passa a ser l'actiu. La restauració no altera l'OEE.
+
+La restauració no fa una fusió silenciosa: qualsevol ID que ja existeixi amb un valor diferent es mostra com a conflicte i es conserva el valor viu. Una absència al snapshot no esborra res del model canònic.
+
+### 14.5 Fora de la PR C
+
+PR D (motor OEE), PR E (històric i filtres) i la passada integrada d'R6. La PR C no calcula OEE, no filtra l'històric i no substitueix el calculador de la US-1.

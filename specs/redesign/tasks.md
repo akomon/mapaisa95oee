@@ -88,8 +88,8 @@ Extretes de [spec.md](spec.md), seccions 3, 4, 6 i 13. La spec es commita abans 
 
 ## T8 — Spec de la PR C
 
-- [ ] Afegir a `specs/redesign/` la traça de C i confirmar que aquesta llista no afegeix requisits a les seccions 3, 4, 6 i 13.
-- [ ] Tancar a la SPEC, abans del codi, el contingut de les plantilles i l'origen dels suggeriments assistits. Si no es tanquen, no s'inventa cap generador ni cap plantilla.
+- [x] Afegir a `specs/redesign/` la traça de C i confirmar que aquesta llista no afegeix requisits a les seccions 3, 4, 6 i 13.
+- [x] Tancar a la SPEC, abans del codi, el contingut de les plantilles i l'origen dels suggeriments assistits. Si no es tanquen, no s'inventa cap generador ni cap plantilla.
 - [ ] Commit de la spec abans del codi de la PR C.
 
 ## T9 — Plantilles (AC-05)
