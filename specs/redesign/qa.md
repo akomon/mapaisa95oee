@@ -108,3 +108,5 @@ Totes les imatges són a `specs/redesign/qa/`:
 
 No s'ha detectat cap defecte que bloquegi AC-20 o AC-21. Els 16 avisos `info` de deprecació queden fora d'aquesta QA i no s'han tocat. No es fusiona la PR sense confirmació de Mon.
 
+PR de QA: [#12](https://github.com/akomon/mapaisa95oee/pull/12).
+

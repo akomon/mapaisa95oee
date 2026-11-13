@@ -136,4 +136,4 @@ Extretes de [spec.md](spec.md), seccions 4, 9 i 11, i detallades a [qa.md](qa.md
 
 - [x] Recórrer AC-01…AC-21 i confirmar que totes tenen prova o evidència; actualitzar la taula de traçabilitat.
 - [x] Marcar a `tasks.md` les caselles de C, D, E i QA.
-- [ ] PR de QA final enllaçada a aquesta carpeta.
+- [x] PR de QA final enllaçada a aquesta carpeta: [#12](https://github.com/akomon/mapaisa95oee/pull/12).
