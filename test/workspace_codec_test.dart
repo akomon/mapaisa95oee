@@ -247,4 +247,36 @@ void main() {
       contains(WorkspaceIssueCode.invalidField),
     );
   });
+
+  test('les instantànies i la restauració fan la volta sencera', () {
+    final now = DateTime.utc(2026, 6, 1);
+    final created = createVersion(
+      foodIndustryExample(),
+      schemaId: 'n20',
+      note: 'Base',
+      now: now,
+    ).workspace!;
+    final source = created.versions.single.id;
+    final deleted = deleteEntity(created, id: 'n5', confirm: true).workspace!;
+    final restored = restoreVersion(
+      deleted,
+      versionId: source,
+      note: 'Torna',
+      now: now,
+      confirm: true,
+    ).workspace!;
+    final raw = workspaceToJson(restored);
+    final imported = workspaceFromJson(raw);
+    expect(
+      imported.isValid,
+      isTrue,
+      reason: imported.issues
+          .map((issue) => '${issue.code.name}:${issue.field}')
+          .join(','),
+    );
+    expect(workspaceToJson(imported.workspace!), raw);
+    expect(imported.workspace!.versions, hasLength(2));
+    expect(imported.workspace!.schemas, hasLength(2));
+    expect(findAsset(imported.workspace!, 'n5'), isNotNull);
+  });
 }

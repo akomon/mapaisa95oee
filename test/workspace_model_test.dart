@@ -534,6 +534,256 @@ void main() {
     expect(oeeRecordsJson(renamed), before);
   });
 
+  test('les plantilles només creen màquines amb icona machine i cap flux', () {
+    final workspace = foodIndustryExample();
+    final template = findMachineTemplate('envasat')!;
+    expect(template.machines, hasLength(3));
+    final applied = apply(
+      applyTemplate(
+        workspace,
+        templateId: 'envasat',
+        lineId: 'n4',
+        schemaId: 'n20',
+        now: now,
+      ),
+    );
+    final created = applied.assets.skip(workspace.assets.length).toList();
+    expect(created.map((asset) => asset.name), [
+      'Omplidora',
+      'Taponadora',
+      'Etiquetadora',
+    ]);
+    for (final asset in created) {
+      expect(asset.kind, AssetKind.machine);
+      expect(asset.parentId, 'n4');
+      expect(asset.iconKey, IconKey.machine);
+      expect(asset.functions, isEmpty);
+    }
+    final createdIds = created.map((asset) => asset.id).toList();
+    expect(applied.flows, isEmpty);
+    expect(applied.versions, isEmpty);
+    expect(applied.schemas.single.assetIds, containsAll(createdIds));
+    expect(applied.schemas.single.layout.keys, containsAll(createdIds));
+
+    final area = applyTemplate(
+      workspace,
+      templateId: 'envasat',
+      lineId: 'n3',
+      now: now,
+    );
+    expect(area.workspace, isNull);
+    expect(area.issues, [
+      const WorkspaceIssue(
+        WorkspaceIssueCode.incompatibleParent,
+        field: 'lineId',
+        entityId: 'n3',
+      ),
+    ]);
+    final unknown = applyTemplate(
+      workspace,
+      templateId: 'inexistent',
+      lineId: 'n4',
+      now: now,
+    );
+    expect(unknown.workspace, isNull);
+    expect(unknown.issues.single.code, WorkspaceIssueCode.notFound);
+  });
+
+  test('crea esquemes buits, amb contingut de plantes i còpies', () {
+    final workspace = foodIndustryExample();
+    final emptied = apply(addSchema(workspace, name: 'Buit', now: now));
+    final emptySchema = emptied.schemas.last;
+    expect(emptySchema.plantIds, isEmpty);
+    expect(emptySchema.assetIds, isEmpty);
+    expect(emptySchema.systemIds, isEmpty);
+    expect(emptySchema.flowIds, isEmpty);
+
+    final filled = apply(
+      addSchema(
+        workspace,
+        name: 'Girona',
+        plantIds: ['n2'],
+        includePlantContent: true,
+        now: now,
+      ),
+    );
+    final filledSchema = filled.schemas.last;
+    expect(filledSchema.plantIds, ['n2']);
+    expect(
+      filledSchema.assetIds,
+      containsAll(['n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8']),
+    );
+    expect(filledSchema.assetIds, isNot(contains('n12')));
+    expect(filledSchema.systemIds, contains('n17'));
+    expect(filled.assets, hasLength(workspace.assets.length));
+    expect(filled.systems, hasLength(workspace.systems.length));
+
+    final copied = apply(copySchema(workspace, schemaId: 'n20', now: now));
+    final copy = copied.schemas.last;
+    expect(copy.id, isNot('n20'));
+    expect(copy.name, 'Esquema alimentari (còpia)');
+    expect(copy.assetIds, workspace.schemas.single.assetIds);
+    expect(copy.systemIds, workspace.schemas.single.systemIds);
+    expect(copy.flowIds, workspace.schemas.single.flowIds);
+    expect(copy.layout.keys, workspace.schemas.single.layout.keys);
+    expect(copied.assets, hasLength(workspace.assets.length));
+    expect(copied.systems, hasLength(workspace.systems.length));
+    expect(copied.flows, hasLength(workspace.flows.length));
+
+    final missing = addSchema(
+      workspace,
+      name: 'Alta',
+      plantIds: ['n4'],
+      now: now,
+    );
+    expect(missing.workspace, isNull);
+    expect(missing.issues.single.code, WorkspaceIssueCode.orphanReference);
+  });
+
+  test('confirmar un suggeriment no en confirma d\'altres', () {
+    var workspace = foodIndustryExample();
+    for (final name in ['Anada', 'Tornada']) {
+      workspace = apply(
+        addFlow(
+          workspace,
+          name: name,
+          sourceId: 'n16',
+          targetId: 'n17',
+          exchangedData: 'Ordres',
+          purpose: 'Enviar',
+          status: FlowStatus.suggested,
+          now: now,
+        ),
+      );
+    }
+    final first = workspace.flows.first;
+    final second = workspace.flows.last;
+    final confirmed = apply(confirmFlow(workspace, id: first.id, now: now));
+    expect(findFlow(confirmed, first.id)!.status, FlowStatus.confirmed);
+    expect(findFlow(confirmed, second.id)!.status, FlowStatus.suggested);
+  });
+
+  test('les instantànies encadenen versions del mateix esquema', () {
+    final workspace = foodIndustryExample();
+    final first = apply(
+      createVersion(workspace, schemaId: 'n20', note: 'Inicial', now: now),
+    );
+    final initial = first.versions.single;
+    expect(initial.parentVersionId, isNull);
+    expect(initial.schemaId, 'n20');
+    expect(initial.note, 'Inicial');
+    expect(initial.snapshot.schema.id, 'n20');
+    expect(
+      initial.snapshot.organizations,
+      hasLength(workspace.organizations.length),
+    );
+    expect(initial.snapshot.assets, hasLength(workspace.assets.length));
+    expect(initial.snapshot.systems, hasLength(workspace.systems.length));
+    expect(initial.snapshot.flows, hasLength(workspace.flows.length));
+
+    final second = apply(
+      createVersion(first, schemaId: 'n20', note: 'Segona', now: now),
+    );
+    expect(second.versions, hasLength(2));
+    expect(second.versions.last.parentVersionId, initial.id);
+
+    final reloaded = workspaceFromJson(workspaceToJson(second));
+    expect(
+      reloaded.isValid,
+      isTrue,
+      reason: reloaded.issues.map((issue) => issue.code.name).join(','),
+    );
+  });
+
+  test(
+    'restaurar afegeix el que falta, conserva el viu i reassigna l\'esquema',
+    () {
+      final record = OeeRecord(
+        id: 'n99',
+        productionDate: '2026-06-01',
+        shift: 'Matí',
+        lineId: 'n4',
+        article: 'Iogurt',
+        lot: 'L-1',
+        plannedMinutes: 1,
+        downtimeMinutes: 0,
+        speedOriginal: 1,
+        speedUnit: SpeedUnit.unitsPerSecond,
+        idealCycleSeconds: 1,
+        totalUnits: 1,
+        goodUnits: 1,
+        status: OeeRecordStatus.validated,
+        formulaVersion: 'oee.v1',
+        capturedLineName: 'Línia iogurt',
+        capturedPlantName: 'Planta Girona',
+        createdAt: now,
+        updatedAt: now,
+      );
+      final workspace = foodIndustryExample().copyWith(oeeRecords: [record]);
+      final oeeBefore = oeeRecordsJson(workspace);
+      final withVersion = apply(
+        createVersion(workspace, schemaId: 'n20', note: 'Base', now: now),
+      );
+      final versionId = withVersion.versions.single.id;
+      final deleted = apply(deleteEntity(withVersion, id: 'n5', confirm: true));
+      expect(findAsset(deleted, 'n5'), isNull);
+      final renamed = apply(
+        updateAsset(deleted, id: 'n4', name: 'Línia nova', now: now),
+      );
+
+      final preview = restoreVersion(renamed, versionId: versionId, now: now);
+      expect(preview.workspace, isNull);
+      expect(preview.issues, [
+        const WorkspaceIssue(WorkspaceIssueCode.confirmationRequired),
+      ]);
+      final report = preview.restoreReport!;
+      expect(report.addedIds, contains('n5'));
+      expect(report.conflictIds, contains('n4'));
+      expect(report.schemaIdReassigned, isTrue);
+      expect(report.workingSchemaId, isNot('n20'));
+
+      final restored = apply(
+        restoreVersion(
+          renamed,
+          versionId: versionId,
+          note: 'Torna',
+          now: now,
+          confirm: true,
+        ),
+      );
+      expect(findAsset(restored, 'n5')!.name, 'Omplidora');
+      expect(findAsset(restored, 'n5')!.parentId, 'n4');
+      expect(findAsset(restored, 'n5')!.iconKey, IconKey.machine);
+      expect(findAsset(restored, 'n4')!.name, 'Línia nova');
+      expect(restored.schemas.any((schema) => schema.id == 'n20'), isTrue);
+      final working = findSchema(restored, report.workingSchemaId)!;
+      expect(working.assetIds, contains('n5'));
+      final newVersion = restored.versions.last;
+      expect(newVersion.parentVersionId, versionId);
+      expect(newVersion.schemaId, report.workingSchemaId);
+      expect(newVersion.snapshot.schema.id, report.workingSchemaId);
+      expect(
+        newVersion.snapshot.assets.any(
+          (asset) => asset.id == 'n5' && asset.name == 'Omplidora',
+        ),
+        isTrue,
+      );
+      expect(
+        newVersion.snapshot.assets.any(
+          (asset) => asset.id == 'n4' && asset.name == 'Línia nova',
+        ),
+        isTrue,
+      );
+      expect(oeeRecordsJson(restored), oeeBefore);
+      final reloaded = workspaceFromJson(workspaceToJson(restored));
+      expect(
+        reloaded.isValid,
+        isTrue,
+        reason: reloaded.issues.map((issue) => issue.code.name).join(','),
+      );
+    },
+  );
+
   test('la fixture alimentaria no iguala empresa amb L4 ni línia amb L2', () {
     final workspace = foodIndustryExample();
     final organization = workspace.organizations.single;

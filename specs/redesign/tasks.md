@@ -90,44 +90,44 @@ Extretes de [spec.md](spec.md), seccions 3, 4, 6 i 13. La spec es commita abans 
 
 - [x] Afegir a `specs/redesign/` la traça de C i confirmar que aquesta llista no afegeix requisits a les seccions 3, 4, 6 i 13.
 - [x] Tancar a la SPEC, abans del codi, el contingut de les plantilles i l'origen dels suggeriments assistits. Si no es tanquen, no s'inventa cap generador ni cap plantilla.
-- [ ] Commit de la spec abans del codi de la PR C.
+- [x] Commit de la spec abans del codi de la PR C.
 
 ## T9 — Plantilles (AC-05)
 
-- [ ] Model de plantilla que només descriu màquines i icones a crear; cap funció, zona, abast ni flux.
-- [ ] Previsualització abans d'aplicar amb les màquines i les icones que es crearan.
-- [ ] En aplicar la plantilla des d'una línia, la màquina creada només n'hereta la pertinença; el pare és la línia.
-- [ ] Tests: la plantilla no assigna funcions, zona ni fluxos confirmats; canviar la icona no canvia el tipus ni les funcions.
+- [x] Model de plantilla que només descriu màquines i icones a crear; cap funció, zona, abast ni flux.
+- [x] Previsualització abans d'aplicar amb les màquines i les icones que es crearan.
+- [x] En aplicar la plantilla des d'una línia, la màquina creada només n'hereta la pertinença; el pare és la línia.
+- [x] Tests: la plantilla no assigna funcions, zona ni fluxos confirmats; canviar la icona no canvia el tipus ni les funcions.
 
 ## T10 — Suggeriments assistits (AC-06)
 
-- [ ] Contracte de suggeriment amb origen, destí, dades, protocol o desconegut, finalitat i estat `suggested`.
-- [ ] Cada suggeriment es mostra com a suggeriment i es pot descartar; descartar elimina amb les regles d'AC-03.
-- [ ] Confirmar és una acció individual sobre aquell flux; no hi ha confirmació en bloc.
-- [ ] Cap lectura de xarxa ni flux derivat d'un abast compartit; cap suggeriment automàtic si la SPEC no n'ha tancat l'origen.
-- [ ] Tests: un suggeriment no confirmat no compta com a confirmat i confirmar-ne un no en confirma d'altres.
+- [x] Contracte de suggeriment amb origen, destí, dades, protocol o desconegut, finalitat i estat `suggested`.
+- [x] Cada suggeriment es mostra com a suggeriment i es pot descartar; descartar elimina amb les regles d'AC-03.
+- [x] Confirmar és una acció individual sobre aquell flux; no hi ha confirmació en bloc.
+- [x] Cap lectura de xarxa ni flux derivat d'un abast compartit; cap suggeriment automàtic si la SPEC no n'ha tancat l'origen.
+- [x] Tests: un suggeriment no confirmat no compta com a confirmat i confirmar-ne un no en confirma d'altres.
 
 ## T11 — Esquemes múltiples (AC-07)
 
-- [ ] Crear un esquema amb nom, plantes, actius, sistemes, fluxos i disposició.
-- [ ] Copiar un esquema existent amb la seva disposició i referències, amb ID nou.
-- [ ] Obrir i canviar l'esquema i la planta actius conservant la selecció contextual; el selector existent no crea ni restaura res.
-- [ ] La disposició només cita IDs de l'esquema i coordenades finites; un esquema pot no contenir tota la planta.
-- [ ] Tests: crear i copiar, canvi d'esquema, selecció coherent i cap duplicació de l'ERP compartit.
+- [x] Crear un esquema amb nom, plantes, actius, sistemes, fluxos i disposició.
+- [x] Copiar un esquema existent amb la seva disposició i referències, amb ID nou.
+- [x] Obrir i canviar l'esquema i la planta actius conservant la selecció contextual; el selector existent no crea ni restaura res.
+- [x] La disposició només cita IDs de l'esquema i coordenades finites; un esquema pot no contenir tota la planta.
+- [x] Tests: crear i copiar, canvi d'esquema, selecció coherent i cap duplicació de l'ERP compartit.
 
 ## T12 — Instantànies i restauració (AC-11)
 
-- [ ] Crear una instantània manual amb data, nota i `parentVersionId`; snapshot autocontingut amb esquema, organitzacions, actius, sistemes i fluxos.
-- [ ] El snapshot no inclou registres OEE, revisions de migració ni versions; la cadena de versions no té cicles.
-- [ ] Restaurar genera una versió nova que referencia l'origen, conserva els IDs capturats i no sobreescriu versions ni mestres actuals.
-- [ ] Mostrar i confirmar la reconciliació amb l'inventari vigent; no deduir-la en silenci.
-- [ ] Els registres OEE i els snapshots previs queden intactes; avisos d'espai i de quota sense purga automàtica.
-- [ ] Tests: anada i tornada del snapshot, restauració, cicle de versions, mestre retirat i OEE intacte.
+- [x] Crear una instantània manual amb data, nota i `parentVersionId`; snapshot autocontingut amb esquema, organitzacions, actius, sistemes i fluxos.
+- [x] El snapshot no inclou registres OEE, revisions de migració ni versions; la cadena de versions no té cicles.
+- [x] Restaurar genera una versió nova que referencia l'origen, conserva els IDs capturats i no sobreescriu versions ni mestres actuals.
+- [x] Mostrar i confirmar la reconciliació amb l'inventari vigent; no deduir-la en silenci.
+- [x] Els registres OEE i els snapshots previs queden intactes; avisos d'espai i de quota sense purga automàtica.
+- [x] Tests: anada i tornada del snapshot, restauració, cicle de versions, mestre retirat i OEE intacte.
 
 ## Fet quan
 
-- [ ] `flutter analyze`, `flutter test` i `flutter build web` en verd.
-- [ ] Chrome real a 1280 × 800 i a 360 px: plantilla, suggeriment, esquemes múltiples, crear i restaurar versió, desar i recarregar.
+- [x] `flutter analyze`, `flutter test` i `flutter build web` en verd.
+- [ ] Chrome real a 1280 × 800 i a 360 px: plantilla, suggeriment, esquemes múltiples, crear i restaurar versió, desar i recarregar. Els fluxos s'han verificat a Chrome real (912 × 766) i les mides de 1280 × 800 i 360 px queden cobertes pels tests de widget.
 - [ ] PR C petita cap a `main` que tanca AC-05, AC-06 (descoberta), AC-07 (múltiples esquemes) i AC-11, i enllaça aquesta carpeta.
 
 # Tasques: motor OEE (PR D)

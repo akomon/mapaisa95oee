@@ -30,6 +30,23 @@ const Key workspaceFlowPurposeKey = Key('workspaceFlowPurpose');
 const Key workspaceFlowProtocolKey = Key('workspaceFlowProtocol');
 const Key isaFunctionsKey = Key('isaFunctions');
 const Key mapL3ExplanationKey = Key('mapL3Explanation');
+const Key workspaceTemplateKey = Key('workspaceTemplate');
+const Key workspaceSchemaMenuKey = Key('workspaceSchemaMenu');
+const Key workspaceSchemaNameKey = Key('workspaceSchemaName');
+const Key workspaceSchemaIncludeKey = Key('workspaceSchemaInclude');
+const Key workspaceSchemaCreateKey = Key('workspaceSchemaCreate');
+const Key workspaceCopySchemaNameKey = Key('workspaceCopySchemaName');
+const Key workspaceCopySchemaCreateKey = Key('workspaceCopySchemaCreate');
+const Key workspaceTemplateSelectKey = Key('workspaceTemplateSelect');
+const Key workspaceTemplateLineKey = Key('workspaceTemplateLine');
+const Key workspaceTemplateApplyKey = Key('workspaceTemplateApply');
+const Key workspaceSnapshotKey = Key('workspaceSnapshot');
+const Key workspaceVersionsKey = Key('workspaceVersions');
+const Key workspaceSnapshotNoteKey = Key('workspaceSnapshotNote');
+const Key workspaceSnapshotCreateKey = Key('workspaceSnapshotCreate');
+const Key workspaceConfirmRestoreKey = Key('workspaceConfirmRestore');
+const Key workspaceCancelRestoreKey = Key('workspaceCancelRestore');
+const Key workspaceSuggestionsKey = Key('workspaceSuggestions');
 
 final GlobalKey workspaceMapKey = GlobalKey(debugLabel: 'workspaceMap');
 
@@ -147,7 +164,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
         if (asset.kind == AssetKind.plant) asset,
     ];
     if (_plantId != null && plants.any((item) => item.id == _plantId)) {
-      return;
+      final selectedSchema = schemas
+          .where((item) => item.id == _schemaId)
+          .firstOrNull;
+      if (selectedSchema == null ||
+          selectedSchema.plantIds.isEmpty ||
+          selectedSchema.plantIds.contains(_plantId)) {
+        return;
+      }
     }
     final schema = schemas.where((item) => item.id == _schemaId).firstOrNull;
     final preferred = schema?.plantIds
@@ -558,7 +582,218 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (!mounted) {
       return;
     }
-    setState(_loadForm);
+    setState(() {
+      _errors = {};
+      _loadForm();
+    });
+  }
+
+  Future<bool> _saveMutation(
+    WorkspaceMutation mutation, {
+    String? selectId,
+    String? schemaId,
+  }) async {
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return false;
+    }
+    await widget.repository.saveWorkspace(mutation.workspace!);
+    if (!mounted) {
+      return false;
+    }
+    final saved = widget.repository.status == SaveStatus.saved;
+    setState(() {
+      if (saved) {
+        if (schemaId != null) {
+          _schemaId = schemaId;
+        }
+        if (selectId != null) {
+          _selectedId = selectId;
+        }
+        _creating = null;
+        _errors = {};
+        _loadForm();
+      }
+    });
+    return saved;
+  }
+
+  Future<void> _newSchema() async {
+    final plants = [
+      for (final asset in _workspace.assets)
+        if (asset.kind == AssetKind.plant) asset,
+    ];
+    final draft = await showDialog<_SchemaDraft>(
+      context: context,
+      builder: (context) => _NewSchemaDialog(plants: plants),
+    );
+    if (draft == null || !mounted) {
+      return;
+    }
+    final mutation = addSchema(
+      _workspace,
+      name: draft.name,
+      plantIds: draft.plantIds,
+      includePlantContent: draft.includePlantContent,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    final schemaId = mutation.workspace!.schemas.last.id;
+    await _saveMutation(mutation, schemaId: schemaId);
+  }
+
+  Future<void> _copySchema() async {
+    final schema = _activeSchema();
+    if (schema == null) {
+      return;
+    }
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) =>
+          _CopySchemaDialog(initialName: '${schema.name} (còpia)'),
+    );
+    if (name == null || !mounted) {
+      return;
+    }
+    final mutation = copySchema(
+      _workspace,
+      schemaId: schema.id,
+      name: name,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    final schemaId = mutation.workspace!.schemas.last.id;
+    await _saveMutation(mutation, schemaId: schemaId);
+  }
+
+  Future<void> _applyTemplate() async {
+    final lines = [
+      for (final asset in _workspace.assets)
+        if (asset.kind == AssetKind.line) asset,
+    ];
+    if (lines.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Plantilla'),
+          content: const Text(
+            'Cal una línia per aplicar una plantilla de màquines.',
+          ),
+          actions: [
+            TextButton(
+              style: workspaceControlStyle,
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tanca'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    final selected = findAsset(_workspace, _selectedId ?? '');
+    final choice = await showDialog<_TemplateChoice>(
+      context: context,
+      builder: (context) => _TemplateDialog(
+        lines: lines,
+        initialLineId: selected?.kind == AssetKind.line
+            ? selected!.id
+            : lines.first.id,
+      ),
+    );
+    if (choice == null || !mounted) {
+      return;
+    }
+    final mutation = applyTemplate(
+      _workspace,
+      templateId: choice.templateId,
+      lineId: choice.lineId,
+      schemaId: _schemaId,
+      now: widget.repository.now,
+    );
+    if (mutation.workspace == null) {
+      setState(() => _errors = _issueMap(mutation.issues));
+      return;
+    }
+    final before = liveIds(_workspace);
+    final created = mutation.workspace!.assets
+        .where((asset) => !before.contains(asset.id))
+        .firstOrNull;
+    await _saveMutation(mutation, selectId: created?.id);
+  }
+
+  Future<void> _createSnapshot() async {
+    final schema = _activeSchema();
+    if (schema == null) {
+      return;
+    }
+    final note = await showDialog<String>(
+      context: context,
+      builder: (context) => const _SnapshotDialog(),
+    );
+    if (note == null || !mounted) {
+      return;
+    }
+    final mutation = createVersion(
+      _workspace,
+      schemaId: schema.id,
+      note: note,
+      now: widget.repository.now,
+    );
+    await _saveMutation(mutation);
+  }
+
+  Future<void> _openVersions() async {
+    final versionId = await showDialog<String>(
+      context: context,
+      builder: (context) => _VersionsDialog(workspace: _workspace),
+    );
+    if (versionId == null || !mounted) {
+      return;
+    }
+    await _restoreVersion(versionId);
+  }
+
+  Future<void> _restoreVersion(String versionId) async {
+    final source = findVersion(_workspace, versionId);
+    if (source == null) {
+      return;
+    }
+    final preview = restoreVersion(
+      _workspace,
+      versionId: versionId,
+      now: widget.repository.now,
+    );
+    final report = preview.restoreReport;
+    if (report == null) {
+      setState(() => _errors = _issueMap(preview.issues));
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => _RestoreDialog(report: report, source: source),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    final mutation = restoreVersion(
+      _workspace,
+      versionId: versionId,
+      note: 'Restauració de ${source.id}',
+      now: widget.repository.now,
+      confirm: true,
+    );
+    await _saveMutation(mutation, schemaId: report.workingSchemaId);
+  }
+
+  Future<void> _discardSuggestion(String id) async {
+    _select(id);
+    await _delete();
   }
 
   Future<void> _loadExample() async {
@@ -874,6 +1109,15 @@ class _WorkspacePageState extends State<WorkspacePage> {
                         widget.onOpenData!,
                       ),
                     _addMenu(),
+                    OutlinedButton.icon(
+                      key: workspaceTemplateKey,
+                      style: workspaceControlStyle,
+                      onPressed: widget.repository.status == SaveStatus.saving
+                          ? null
+                          : _applyTemplate,
+                      icon: const Icon(Icons.precision_manufacturing_outlined),
+                      label: const Text('Plantilla'),
+                    ),
                     if (_workspace.organizations.isEmpty &&
                         _workspace.systems.isEmpty)
                       OutlinedButton.icon(
@@ -992,6 +1236,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   Widget _tree() {
     final query = _query();
+    final suggestions = [
+      for (final flow in _workspace.flows)
+        if (flow.status == FlowStatus.suggested && _nameHit(flow.name)) flow,
+    ];
     final organizations = [
       for (final organization in _workspace.organizations)
         if (query.isEmpty ||
@@ -1065,6 +1313,24 @@ class _WorkspacePageState extends State<WorkspacePage> {
                       icon: system.iconKey,
                       depth: 0,
                     ),
+                if (suggestions.isNotEmpty) ...[
+                  Padding(
+                    key: workspaceSuggestionsKey,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: Text(
+                      'Suggeriments (${suggestions.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'Fluxos manuals pendents. Confirma\'ls o descarta\'ls d\'un en un.',
+                      style: TextStyle(fontSize: 12, color: steel),
+                    ),
+                  ),
+                  for (final flow in suggestions) _suggestionTile(flow),
+                ],
               ],
             ),
           ),
@@ -1117,6 +1383,42 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
+  Widget _suggestionTile(ExchangeFlow flow) {
+    final protocol = flow.protocol ?? 'Desconegut';
+    final selected = _selectedId == flow.id && _creating == null;
+    return ListTile(
+      key: Key('suggestion-${flow.id}'),
+      focusNode: _node('suggestion-${flow.id}'),
+      minTileHeight: 48,
+      selected: selected,
+      leading: const Icon(Icons.call_split, color: ink),
+      title: Text(flow.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        '${_entityLabel(flow.sourceId)} → ${_entityLabel(flow.targetId)}\n'
+        '${flow.exchangedData} · $protocol · ${flow.purpose}\n'
+        'Suggeriment',
+        style: const TextStyle(color: steel),
+      ),
+      isThreeLine: true,
+      onTap: () => _select(flow.id),
+      trailing: PopupMenuButton<String>(
+        key: Key('suggestion-menu-${flow.id}'),
+        tooltip: 'Accions del suggeriment',
+        onSelected: (value) {
+          if (value == 'confirm') {
+            _confirmFlow(flow.id);
+          } else if (value == 'discard') {
+            _discardSuggestion(flow.id);
+          }
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(value: 'confirm', child: Text('Confirma el flux')),
+          PopupMenuItem(value: 'discard', child: Text('Descarta')),
+        ],
+      ),
+    );
+  }
+
   Widget _map() {
     final geometry = _geometry();
     final systems = {
@@ -1130,21 +1432,25 @@ class _WorkspacePageState extends State<WorkspacePage> {
         children: [
           SizedBox(
             height: 48,
-            child: ListView(
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: [
-                const Center(
-                  child: Text(
-                    'Què fa i què connecta',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+              child: Row(
+                children: [
+                  const Center(
+                    child: Text(
+                      'Què fa i què connecta',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Center(child: _plantControl()),
-                const SizedBox(width: 12),
-                Center(child: _schemaControl()),
-              ],
+                  const SizedBox(width: 12),
+                  Center(child: _plantControl()),
+                  const SizedBox(width: 12),
+                  Center(child: _schemaControl()),
+                  const SizedBox(width: 12),
+                  Center(child: _schemaMenu()),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -1477,7 +1783,48 @@ class _WorkspacePageState extends State<WorkspacePage> {
         for (final schema in schemas)
           DropdownMenuItem(value: schema.id, child: Text(schema.name)),
       ],
-      onChanged: (value) => setState(() => _schemaId = value),
+      onChanged: (value) => setState(() {
+        _schemaId = value;
+        _ensureContext();
+      }),
+    );
+  }
+
+  Widget _schemaMenu() {
+    final schema = _activeSchema();
+    return PopupMenuButton<String>(
+      key: workspaceSchemaMenuKey,
+      tooltip: 'Esquemes',
+      enabled: widget.repository.status != SaveStatus.saving,
+      onSelected: (value) {
+        if (value == 'new') {
+          _newSchema();
+        } else if (value == 'copy') {
+          _copySchema();
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'new', child: Text('Nou esquema…')),
+        PopupMenuItem(
+          value: 'copy',
+          enabled: schema != null,
+          child: const Text('Copia l\'esquema actiu'),
+        ),
+      ],
+      child: const SizedBox(
+        height: 48,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.dashboard_customize_outlined),
+              SizedBox(width: 6),
+              Text('Esquemes'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -2042,7 +2389,22 @@ class _WorkspacePageState extends State<WorkspacePage> {
                           key: workspaceSaveStatusKey,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text('Instantànies: ${_workspace.versions.length}'),
+                        OutlinedButton(
+                          key: workspaceSnapshotKey,
+                          style: workspaceControlStyle,
+                          onPressed: _activeSchema() == null
+                              ? null
+                              : _createSnapshot,
+                          child: const Text('Crea instantània'),
+                        ),
+                        OutlinedButton(
+                          key: workspaceVersionsKey,
+                          style: workspaceControlStyle,
+                          onPressed: _openVersions,
+                          child: Text(
+                            'Instantànies (${_workspace.versions.length})',
+                          ),
+                        ),
                       ]
                       .map(
                         (child) => Padding(
@@ -2237,6 +2599,416 @@ class _DeleteDialogState extends State<_DeleteDialog> {
           style: workspaceControlStyle,
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Elimina'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SchemaDraft {
+  const _SchemaDraft(this.name, this.plantIds, this.includePlantContent);
+
+  final String name;
+  final List<String> plantIds;
+  final bool includePlantContent;
+}
+
+class _NewSchemaDialog extends StatefulWidget {
+  const _NewSchemaDialog({required this.plants});
+
+  final List<Asset> plants;
+
+  @override
+  State<_NewSchemaDialog> createState() => _NewSchemaDialogState();
+}
+
+class _NewSchemaDialogState extends State<_NewSchemaDialog> {
+  final _name = TextEditingController();
+  final _selected = <String>{};
+  bool _include = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canCreate = _name.text.trim().isNotEmpty;
+    return AlertDialog(
+      title: const Text('Nou esquema'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              key: workspaceSchemaNameKey,
+              controller: _name,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Nom'),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Plantes de l\'esquema',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (widget.plants.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text('No hi ha plantes. L\'esquema quedarà buit.'),
+              )
+            else
+              for (final plant in widget.plants)
+                CheckboxListTile(
+                  key: Key('schema-plant-${plant.id}'),
+                  value: _selected.contains(plant.id),
+                  title: Text(plant.name),
+                  onChanged: (value) => setState(() {
+                    if (value == true) {
+                      _selected.add(plant.id);
+                    } else {
+                      _selected.remove(plant.id);
+                    }
+                  }),
+                ),
+            SwitchListTile(
+              key: workspaceSchemaIncludeKey,
+              value: _include && _selected.isNotEmpty,
+              title: const Text(
+                'Inclou actius, sistemes i fluxos de les plantes',
+              ),
+              onChanged: _selected.isEmpty
+                  ? null
+                  : (value) => setState(() => _include = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel·la'),
+        ),
+        TextButton(
+          key: workspaceSchemaCreateKey,
+          style: workspaceControlStyle,
+          onPressed: canCreate
+              ? () => Navigator.of(context).pop(
+                  _SchemaDraft(_name.text, [
+                    for (final plant in widget.plants)
+                      if (_selected.contains(plant.id)) plant.id,
+                  ], _include && _selected.isNotEmpty),
+                )
+              : null,
+          child: const Text('Crea'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CopySchemaDialog extends StatefulWidget {
+  const _CopySchemaDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_CopySchemaDialog> createState() => _CopySchemaDialogState();
+}
+
+class _CopySchemaDialogState extends State<_CopySchemaDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initialName,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Copia l\'esquema actiu'),
+      content: TextField(
+        key: workspaceCopySchemaNameKey,
+        controller: _name,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Nom'),
+      ),
+      actions: [
+        TextButton(
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel·la'),
+        ),
+        TextButton(
+          key: workspaceCopySchemaCreateKey,
+          style: workspaceControlStyle,
+          onPressed: _name.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_name.text),
+          child: const Text('Copia'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TemplateChoice {
+  const _TemplateChoice(this.templateId, this.lineId);
+
+  final String templateId;
+  final String lineId;
+}
+
+class _TemplateDialog extends StatefulWidget {
+  const _TemplateDialog({required this.lines, required this.initialLineId});
+
+  final List<Asset> lines;
+  final String initialLineId;
+
+  @override
+  State<_TemplateDialog> createState() => _TemplateDialogState();
+}
+
+class _TemplateDialogState extends State<_TemplateDialog> {
+  String _templateId = machineTemplates.first.id;
+  late String _lineId = widget.initialLineId;
+
+  MachineTemplate get _template => findMachineTemplate(_templateId)!;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Aplica una plantilla'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Plantilla',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            DropdownButton<String>(
+              key: workspaceTemplateSelectKey,
+              value: _templateId,
+              isExpanded: true,
+              items: [
+                for (final template in machineTemplates)
+                  DropdownMenuItem(
+                    value: template.id,
+                    child: Text(template.name),
+                  ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _templateId = value ?? _templateId),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Màquines que es crearan',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            for (final machine in _template.machines)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(iconFor(machine.iconKey), size: 20, color: ink),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(machine.name)),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 12),
+            const Text('Línia', style: TextStyle(fontWeight: FontWeight.w600)),
+            DropdownButton<String>(
+              key: workspaceTemplateLineKey,
+              value: _lineId,
+              isExpanded: true,
+              items: [
+                for (final line in widget.lines)
+                  DropdownMenuItem(value: line.id, child: Text(line.name)),
+              ],
+              onChanged: (value) => setState(() => _lineId = value ?? _lineId),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Només crea màquines. No assigna funcions, zones ni fluxos.',
+              style: TextStyle(fontSize: 12, color: steel),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel·la'),
+        ),
+        TextButton(
+          key: workspaceTemplateApplyKey,
+          style: workspaceControlStyle,
+          onPressed: () =>
+              Navigator.of(context).pop(_TemplateChoice(_templateId, _lineId)),
+          child: const Text('Aplica'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SnapshotDialog extends StatefulWidget {
+  const _SnapshotDialog();
+
+  @override
+  State<_SnapshotDialog> createState() => _SnapshotDialogState();
+}
+
+class _SnapshotDialogState extends State<_SnapshotDialog> {
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Crea instantània'),
+      content: TextField(
+        key: workspaceSnapshotNoteKey,
+        controller: _note,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Nota'),
+      ),
+      actions: [
+        TextButton(
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel·la'),
+        ),
+        TextButton(
+          key: workspaceSnapshotCreateKey,
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(_note.text.trim()),
+          child: const Text('Crea'),
+        ),
+      ],
+    );
+  }
+}
+
+class _VersionsDialog extends StatelessWidget {
+  const _VersionsDialog({required this.workspace});
+
+  final Workspace workspace;
+
+  String _schemaName(String id) {
+    return findSchema(workspace, id)?.name ?? id;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final versions = workspace.versions;
+    return AlertDialog(
+      title: const Text('Instantànies'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: versions.isEmpty
+            ? const Text('Encara no hi ha cap instantània.')
+            : ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final version in versions.reversed)
+                    ListTile(
+                      key: Key('version-${version.id}'),
+                      minTileHeight: 48,
+                      title: Text(
+                        version.note.isEmpty ? version.id : version.note,
+                      ),
+                      subtitle: Text(
+                        '${version.createdAt.toIso8601String()}\n'
+                        'Esquema: ${_schemaName(version.schemaId)} · '
+                        'Pare: ${version.parentVersionId ?? 'cap'}',
+                      ),
+                      isThreeLine: true,
+                      trailing: TextButton(
+                        key: Key('restore-${version.id}'),
+                        style: workspaceControlStyle,
+                        onPressed: () => Navigator.of(context).pop(version.id),
+                        child: const Text('Restaura'),
+                      ),
+                    ),
+                ],
+              ),
+      ),
+      actions: [
+        TextButton(
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Tanca'),
+        ),
+      ],
+    );
+  }
+}
+
+class _RestoreDialog extends StatelessWidget {
+  const _RestoreDialog({required this.report, required this.source});
+
+  final RestoreReport report;
+  final ArchitectureVersion source;
+
+  String _list(List<String> ids) => ids.isEmpty ? 'Cap' : ids.join(', ');
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Restaura la instantània'),
+      content: SingleChildScrollView(
+        child: Text(
+          'Instantània: ${source.note.isEmpty ? source.id : source.note} '
+          '(${source.id}).\n\n'
+          'IDs afegits: ${_list(report.addedIds)}\n'
+          'Conflictes (es conserva el valor viu): '
+          '${_list(report.conflictIds)}\n'
+          '${report.schemaIdReassigned ? 'L\'esquema restaurat rebrà un ID nou: ${report.workingSchemaId}.' : 'L\'esquema restaurat conserva l\'ID ${report.workingSchemaId}.'}\n\n'
+          'No se sobreescriu cap mestre viu, cap versió anterior ni cap '
+          'registre OEE.',
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: workspaceCancelRestoreKey,
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel·la'),
+        ),
+        TextButton(
+          key: workspaceConfirmRestoreKey,
+          style: workspaceControlStyle,
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Restaura'),
         ),
       ],
     );
