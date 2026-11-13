@@ -148,10 +148,62 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Desat'), findsOneWidget);
-    expect(
-      tester.getSize(find.byKey(workspaceZoomInKey)).height,
-      greaterThanOrEqualTo(48),
+    for (final key in [
+      workspaceZoomInKey,
+      workspaceZoomOutKey,
+      workspaceFitKey,
+    ]) {
+      final size = tester.getSize(find.byKey(key));
+      expect(size.height, greaterThanOrEqualTo(48));
+      expect(size.width, greaterThanOrEqualTo(48));
+    }
+  });
+
+  testWidgets('el mapa fa zoom, desplaçament i enquadrament sense arrossegar', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+
+    final viewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
     );
+    final transform = viewer.transformationController!;
+    double scale() => transform.value.storage[0];
+    double panX() => transform.value.storage[12];
+    final fitted = scale();
+
+    await tester.tap(find.byKey(workspaceZoomInKey));
+    await tester.pump();
+    expect(scale(), greaterThan(fitted));
+    await tester.tap(find.byKey(workspaceZoomOutKey));
+    await tester.pump();
+    expect(scale(), closeTo(fitted, 0.000001));
+
+    final beforeDrag = panX();
+    await tester.drag(find.byKey(workspaceMapKey), const Offset(60, 0));
+    await tester.pumpAndSettle();
+    expect(panX(), isNot(closeTo(beforeDrag, 0.000001)));
+
+    await tester.tap(find.byKey(workspaceFitKey));
+    await tester.pump();
+    expect(scale(), closeTo(fitted, 0.000001));
+    expect(panX(), closeTo(0, 0.000001));
+
+    final node = tester.widget<InkWell>(find.byKey(const Key('map-n16')));
+    node.focusNode!.requestFocus();
+    await tester.pump();
+    expect(node.focusNode!.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.equal);
+    await tester.pump();
+    expect(scale(), greaterThan(fitted));
+    final beforeKeyPan = panX();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(panX(), isNot(closeTo(beforeKeyPan, 0.000001)));
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(scale(), closeTo(fitted, 0.000001));
   });
 
   testWidgets('canviar la selecció conserva planta i esquema', (tester) async {
