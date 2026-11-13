@@ -651,14 +651,16 @@ No es fusiona res sense decisió de Mon. Si una PR creix fins a barrejar etapes,
 | AC-17 | R5 | PR E | Diferit |
 | AC-18 | R5 | PR E | Diferit. El document ja té `draft` i `validated` |
 | AC-19 | R6 | Aquesta PR | Cobert |
-| AC-20 | R6 | PR B i PR E, amb la passada final | No tancat. La pantalla nova compleix 48 dp i 360 px, i l'estat de desament porta text |
-| AC-21 | R6 | Cada PR i la passada final | Parcial: anàlisi, tests, build web i navegador de l'abast d'aquesta PR |
+| AC-20 | R6 | PR B, PR C, PR E i la QA integrada | Fora d'aquesta PR: tancat a la QA integrada d'R6 (`qa.md`, 17.5.4) |
+| AC-21 | R6 | Cada PR i la QA integrada | Fora d'aquesta PR: tancat a la QA integrada d'R6 (`qa.md`, 17.5.4) |
 
 ## 12. Fora d'aquesta PR
 
 PR B, C, D i E, el redisseny visual, les plantilles, la descoberta assistida, la restauració de versions, el motor i el pastís de la secció 5, els filtres d'històric, l'agregació, el PDF, el backend i qualsevol lectura de la xarxa.
 
 La columna «Aquesta PR» de la secció 11 descriu només la PR A. L'estat que tanca la PR B és la secció 13. No es reobren les decisions de la secció 8.
+
+La passada integrada d'R6 tanca AC-20 i AC-21. El detall i l'evidència són a [qa.md](qa.md), secció 17.5.4. Aquesta taula no reobre les altres files ni les PR B, C, D i E.
 
 ## 13. PR B — espai de treball, inventari i fluxos manuals
 

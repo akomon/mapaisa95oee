@@ -111,7 +111,7 @@ Extretes de [spec.md](spec.md), secció 14. Aquesta actualització es commita ab
 
 - [x] PR D: motor OEE de la secció 5. El detall executable és [phase-d.md](phase-d.md).
 - [x] PR E: històric i filtres. El detall executable és [phase-e.md](phase-e.md).
-- [ ] QA integrada d'R6.
+- [x] QA integrada d'R6.
 
 # Tasques: QA integrada d'R6
 
@@ -119,21 +119,21 @@ Extretes de [spec.md](spec.md), seccions 4, 9 i 11, i detallades a [qa.md](qa.md
 
 ## T22 — Accessibilitat i responsiu (AC-20)
 
-- [ ] A 360 px i en escriptori, formularis, històrics i accions sense retalls; mapa amb zoom, desplaçament i enquadrament.
-- [ ] Teclat per seleccionar, editar, confirmar i cancel·lar a totes les pantalles noves; focus visible.
-- [ ] Etiquetes accessibles; estat suggerit, confirmat, desat i error llegit per text i no només pel color.
-- [ ] Objectius ≥ 48 × 48 dp i controls del mapa operables sense arrossegar com a única via.
-- [ ] Tests de widget o d'accessibilitat i comprovació manual a 360 px.
+- [x] A 360 px i en escriptori, formularis, històrics i accions sense retalls; mapa amb zoom, desplaçament i enquadrament.
+- [x] Teclat per seleccionar, editar, confirmar i cancel·lar a totes les pantalles noves; focus visible.
+- [x] Etiquetes accessibles; estat suggerit, confirmat, desat i error llegit per text i no només pel color.
+- [x] Objectius ≥ 48 × 48 dp i controls del mapa operables sense arrossegar com a única via.
+- [x] Tests de widget o d'accessibilitat i comprovació manual a 360 px.
 
 ## T23 — Proves i evidència (AC-21)
 
-- [ ] Executar unitaris, de persistència, d'importació, de restauració, d'OEE i d'historial; `flutter analyze`, `flutter test` i `flutter build web`.
-- [ ] Chrome real: recàrrega, import invàlid, substitució, restauració, historial, teclat i 360 px.
-- [ ] Aportar sortides d'anàlisi i de tests, i evidència visual de 1280 × 800 i de 360 px.
-- [ ] Verificar que l'exemple no presenta empresa = L4/ERP ni jerarquia = nivells, i que no es pinten indicadors inventats.
+- [x] Executar unitaris, de persistència, d'importació, de restauració, d'OEE i d'historial; `flutter analyze`, `flutter test` i `flutter build web`.
+- [x] Chrome real: recàrrega, import invàlid, substitució, restauració, historial, teclat i 360 px.
+- [x] Aportar sortides d'anàlisi i de tests, i evidència visual de 1280 × 800 i de 360 px.
+- [x] Verificar que l'exemple no presenta empresa = L4/ERP ni jerarquia = nivells, i que no es pinten indicadors inventats.
 
 ## T24 — Tancament
 
-- [ ] Recórrer AC-01…AC-21 i confirmar que totes tenen prova o evidència; actualitzar la taula de traçabilitat.
-- [ ] Marcar a `tasks.md` les caselles de C, D, E i QA.
+- [x] Recórrer AC-01…AC-21 i confirmar que totes tenen prova o evidència; actualitzar la taula de traçabilitat.
+- [x] Marcar a `tasks.md` les caselles de C, D, E i QA.
 - [ ] PR de QA final enllaçada a aquesta carpeta.
