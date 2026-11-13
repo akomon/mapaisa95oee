@@ -128,7 +128,7 @@ Extretes de [spec.md](spec.md), seccions 3, 4, 6 i 13. La spec es commita abans 
 
 - [x] `flutter analyze`, `flutter test` i `flutter build web` en verd.
 - [ ] Chrome real a 1280 × 800 i a 360 px: plantilla, suggeriment, esquemes múltiples, crear i restaurar versió, desar i recarregar. Els fluxos s'han verificat a Chrome real (912 × 766) i les mides de 1280 × 800 i 360 px queden cobertes pels tests de widget.
-- [ ] PR C petita cap a `main` que tanca AC-05, AC-06 (descoberta), AC-07 (múltiples esquemes) i AC-11, i enllaça aquesta carpeta.
+- [x] PR C petita cap a `main` que tanca AC-05, AC-06 (descoberta), AC-07 (múltiples esquemes) i AC-11, i enllaça aquesta carpeta. Oberta com a PR #11 contra la branca de la PR #10; el merge a `main` queda pendent de confirmació.
 
 # Tasques: motor OEE (PR D)
 
