@@ -77,6 +77,53 @@ const Set<IconKey> systemIconKeys = {
   IconKey.genericSystem,
 };
 
+class TemplateMachine {
+  const TemplateMachine({required this.name, this.iconKey = IconKey.machine});
+
+  final String name;
+  final IconKey iconKey;
+}
+
+class MachineTemplate {
+  const MachineTemplate({
+    required this.id,
+    required this.name,
+    required this.machines,
+  });
+
+  final String id;
+  final String name;
+  final List<TemplateMachine> machines;
+}
+
+const List<MachineTemplate> machineTemplates = [
+  MachineTemplate(
+    id: 'envasat',
+    name: 'Línia d\'envasat',
+    machines: [
+      TemplateMachine(name: 'Omplidora'),
+      TemplateMachine(name: 'Taponadora'),
+      TemplateMachine(name: 'Etiquetadora'),
+    ],
+  ),
+  MachineTemplate(
+    id: 'proces',
+    name: 'Línia de procés',
+    machines: [
+      TemplateMachine(name: 'Barrejador'),
+      TemplateMachine(name: 'Pasteuritzador'),
+    ],
+  ),
+  MachineTemplate(
+    id: 'fred',
+    name: 'Línia de fred',
+    machines: [
+      TemplateMachine(name: 'Túnel de congelació'),
+      TemplateMachine(name: 'Cambra de refrigeració'),
+    ],
+  ),
+];
+
 class WorkspaceIssue {
   const WorkspaceIssue(this.code, {this.field, this.entityId});
 
@@ -567,16 +614,39 @@ class DependencyReport {
   }
 }
 
-class WorkspaceMutation {
-  const WorkspaceMutation.success(this.workspace, {this.dependencies})
-    : issues = const [];
+class RestoreReport {
+  const RestoreReport({
+    required this.sourceVersionId,
+    required this.workingSchemaId,
+    this.addedIds = const [],
+    this.conflictIds = const [],
+    this.schemaIdReassigned = false,
+  });
 
-  const WorkspaceMutation.failure(this.issues, {this.dependencies})
-    : workspace = null;
+  final String sourceVersionId;
+  final String workingSchemaId;
+  final List<String> addedIds;
+  final List<String> conflictIds;
+  final bool schemaIdReassigned;
+}
+
+class WorkspaceMutation {
+  const WorkspaceMutation.success(
+    this.workspace, {
+    this.dependencies,
+    this.restoreReport,
+  }) : issues = const [];
+
+  const WorkspaceMutation.failure(
+    this.issues, {
+    this.dependencies,
+    this.restoreReport,
+  }) : workspace = null;
 
   final Workspace? workspace;
   final List<WorkspaceIssue> issues;
   final DependencyReport? dependencies;
+  final RestoreReport? restoreReport;
 
   bool get isValid => workspace != null;
 }
@@ -744,6 +814,33 @@ ExchangeFlow? findFlow(Workspace workspace, String id) {
   return null;
 }
 
+MachineTemplate? findMachineTemplate(String id) {
+  for (final template in machineTemplates) {
+    if (template.id == id) {
+      return template;
+    }
+  }
+  return null;
+}
+
+WorkSchema? findSchema(Workspace workspace, String id) {
+  for (final schema in workspace.schemas) {
+    if (schema.id == id) {
+      return schema;
+    }
+  }
+  return null;
+}
+
+ArchitectureVersion? findVersion(Workspace workspace, String id) {
+  for (final version in workspace.versions) {
+    if (version.id == id) {
+      return version;
+    }
+  }
+  return null;
+}
+
 Set<String> liveIds(Workspace workspace) {
   return {
     for (final item in workspace.organizations) item.id,
@@ -772,8 +869,13 @@ List<WorkspaceIssue> _sorted(List<WorkspaceIssue> issues) {
 WorkspaceMutation _failure(
   List<WorkspaceIssue> issues, {
   DependencyReport? report,
+  RestoreReport? restoreReport,
 }) {
-  return WorkspaceMutation.failure(_sorted(issues), dependencies: report);
+  return WorkspaceMutation.failure(
+    _sorted(issues),
+    dependencies: report,
+    restoreReport: restoreReport,
+  );
 }
 
 String _allocateId(Workspace workspace, Set<String> used) {
@@ -1614,6 +1716,533 @@ WorkspaceMutation linkToSchema(
             item,
       ],
     ),
+  );
+}
+
+List<String> _uniqueIds(Iterable<String> values) {
+  final result = <String>[];
+  for (final value in values) {
+    if (!result.contains(value)) {
+      result.add(value);
+    }
+  }
+  return result;
+}
+
+Map<String, LayoutPoint> _gridLayout(Iterable<String> ids) {
+  final result = <String, LayoutPoint>{};
+  var index = 0;
+  for (final id in ids) {
+    result[id] = LayoutPoint((index % 4) * 160.0, (index ~/ 4) * 120.0);
+    index += 1;
+  }
+  return result;
+}
+
+WorkspaceMutation addSchema(
+  Workspace workspace, {
+  required String name,
+  String? description,
+  List<String> plantIds = const [],
+  bool includePlantContent = false,
+  required DateTime now,
+}) {
+  final issues = <WorkspaceIssue>[];
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) {
+    issues.add(
+      const WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    );
+  }
+  final plants = <String>[];
+  for (final id in plantIds) {
+    if (plants.contains(id)) {
+      issues.add(
+        WorkspaceIssue(
+          WorkspaceIssueCode.duplicateId,
+          field: 'plantIds',
+          entityId: id,
+        ),
+      );
+      continue;
+    }
+    final asset = findAsset(workspace, id);
+    if (asset == null || asset.kind != AssetKind.plant) {
+      issues.add(
+        WorkspaceIssue(
+          WorkspaceIssueCode.orphanReference,
+          field: 'plantIds',
+          entityId: id,
+        ),
+      );
+      continue;
+    }
+    plants.add(id);
+  }
+  if (issues.isNotEmpty) {
+    return _failure(issues);
+  }
+
+  final stamp = asUtc(now);
+  final used = liveIds(workspace);
+  final id = _allocateId(workspace, used);
+  final includedAssets = <Asset>[];
+  final includedSystems = <WorkSystem>[];
+  final includedFlows = <ExchangeFlow>[];
+  if (includePlantContent) {
+    final assetIds = <String>{};
+    void walk(Asset asset) {
+      if (!assetIds.add(asset.id)) {
+        return;
+      }
+      for (final child in workspace.assets) {
+        if (child.parentId == asset.id) {
+          walk(child);
+        }
+      }
+    }
+
+    for (final plantId in plants) {
+      final plant = findAsset(workspace, plantId);
+      if (plant != null) {
+        walk(plant);
+      }
+    }
+    includedAssets.addAll(
+      workspace.assets.where((asset) => assetIds.contains(asset.id)),
+    );
+    final systemIds = <String>{};
+    for (final system in workspace.systems) {
+      if (system.scopeIds.any(assetIds.contains)) {
+        systemIds.add(system.id);
+        includedSystems.add(system);
+      }
+    }
+    final endpointIds = {...assetIds, ...systemIds};
+    for (final flow in workspace.flows) {
+      if (endpointIds.contains(flow.sourceId) &&
+          endpointIds.contains(flow.targetId)) {
+        includedFlows.add(flow);
+      }
+    }
+  } else {
+    for (final plantId in plants) {
+      final plant = findAsset(workspace, plantId);
+      if (plant != null) {
+        includedAssets.add(plant);
+      }
+    }
+  }
+
+  final assetIds = _uniqueIds(includedAssets.map((asset) => asset.id));
+  final systemIds = _uniqueIds(includedSystems.map((system) => system.id));
+  final flowIds = _uniqueIds(includedFlows.map((flow) => flow.id));
+  final schema = WorkSchema(
+    id: id,
+    name: trimmed,
+    description: normalizeOptionalText(description),
+    plantIds: plants,
+    assetIds: assetIds,
+    systemIds: systemIds,
+    flowIds: flowIds,
+    layout: _gridLayout([...assetIds, ...systemIds, ...flowIds]),
+    createdAt: stamp,
+    updatedAt: stamp,
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      schemas: [...workspace.schemas, schema],
+    ),
+  );
+}
+
+WorkspaceMutation copySchema(
+  Workspace workspace, {
+  required String schemaId,
+  String? name,
+  required DateTime now,
+}) {
+  final source = findSchema(workspace, schemaId);
+  if (source == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId),
+    ]);
+  }
+  final trimmed = (name ?? '${source.name} (còpia)').trim();
+  if (trimmed.isEmpty) {
+    return _failure(const [
+      WorkspaceIssue(WorkspaceIssueCode.emptyName, field: 'name'),
+    ]);
+  }
+  final stamp = asUtc(now);
+  final used = liveIds(workspace);
+  final id = _allocateId(workspace, used);
+  final schema = WorkSchema(
+    id: id,
+    name: trimmed,
+    description: source.description,
+    plantIds: source.plantIds,
+    assetIds: source.assetIds,
+    systemIds: source.systemIds,
+    flowIds: source.flowIds,
+    layout: source.layout,
+    createdAt: stamp,
+    updatedAt: stamp,
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      schemas: [...workspace.schemas, schema],
+    ),
+  );
+}
+
+WorkspaceMutation applyTemplate(
+  Workspace workspace, {
+  required String templateId,
+  required String lineId,
+  String? schemaId,
+  required DateTime now,
+}) {
+  final issues = <WorkspaceIssue>[];
+  final template = findMachineTemplate(templateId);
+  if (template == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.notFound,
+        field: 'templateId',
+        entityId: templateId,
+      ),
+    );
+  }
+  final line = findAsset(workspace, lineId);
+  if (line == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.orphanReference,
+        field: 'lineId',
+        entityId: lineId,
+      ),
+    );
+  } else if (line.kind != AssetKind.line) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.incompatibleParent,
+        field: 'lineId',
+        entityId: lineId,
+      ),
+    );
+  }
+  if (schemaId != null && findSchema(workspace, schemaId) == null) {
+    issues.add(
+      WorkspaceIssue(
+        WorkspaceIssueCode.notFound,
+        field: 'schemaId',
+        entityId: schemaId,
+      ),
+    );
+  }
+  if (issues.isNotEmpty || template == null) {
+    return _failure(issues);
+  }
+
+  final stamp = asUtc(now);
+  final used = liveIds(workspace);
+  var counter = workspace.nextIdCounter < 1 ? 1 : workspace.nextIdCounter;
+  String allocate() {
+    var candidate = counter;
+    while (used.contains('n$candidate')) {
+      candidate += 1;
+    }
+    final id = 'n$candidate';
+    used.add(id);
+    counter = candidate + 1;
+    return id;
+  }
+
+  final created = <Asset>[];
+  for (final machine in template.machines) {
+    final id = allocate();
+    created.add(
+      Asset(
+        id: id,
+        name: machine.name,
+        kind: AssetKind.machine,
+        parentId: lineId,
+        iconKey: machine.iconKey,
+        createdAt: stamp,
+        updatedAt: stamp,
+      ),
+    );
+  }
+  final createdIds = [for (final asset in created) asset.id];
+  var schemas = workspace.schemas;
+  if (schemaId != null) {
+    schemas = [
+      for (final schema in workspace.schemas)
+        if (schema.id == schemaId)
+          schema.copyWith(
+            assetIds: _uniqueIds([...schema.assetIds, ...createdIds]),
+            layout: {
+              ...schema.layout,
+              for (var index = 0; index < createdIds.length; index++)
+                createdIds[index]: LayoutPoint(
+                  (schema.assetIds.length + index) * 160.0,
+                  0,
+                ),
+            },
+            updatedAt: stamp,
+          )
+        else
+          schema,
+    ];
+  }
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: counter,
+      assets: [...workspace.assets, ...created],
+      schemas: schemas,
+    ),
+  );
+}
+
+WorkspaceMutation createVersion(
+  Workspace workspace, {
+  required String schemaId,
+  String note = '',
+  required DateTime now,
+}) {
+  final schema = findSchema(workspace, schemaId);
+  if (schema == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: schemaId),
+    ]);
+  }
+  final stamp = asUtc(now);
+  final used = liveIds(workspace);
+  final id = _allocateId(workspace, used);
+  final previous = workspace.versions
+      .where((version) => version.schemaId == schemaId)
+      .lastOrNull;
+  final version = ArchitectureVersion(
+    id: id,
+    schemaId: schemaId,
+    createdAt: stamp,
+    note: note,
+    parentVersionId: previous?.id,
+    snapshot: ArchitectureSnapshot(
+      schema: schema,
+      organizations: workspace.organizations,
+      assets: workspace.assets,
+      systems: workspace.systems,
+      flows: workspace.flows,
+    ),
+  );
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: _counterAfter(id, workspace.nextIdCounter),
+      versions: [...workspace.versions, version],
+    ),
+  );
+}
+
+bool _sameIds(List<String> left, List<String> right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _sameFunctions(List<IsaFunction> left, List<IsaFunction> right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _sameOrganization(Organization left, Organization right) {
+  return left.name == right.name &&
+      left.description == right.description &&
+      left.iconKey == right.iconKey;
+}
+
+bool _sameAsset(Asset left, Asset right) {
+  return left.name == right.name &&
+      left.description == right.description &&
+      left.kind == right.kind &&
+      left.parentId == right.parentId &&
+      left.iconKey == right.iconKey &&
+      _sameFunctions(left.functions, right.functions);
+}
+
+bool _sameSystem(WorkSystem left, WorkSystem right) {
+  return left.name == right.name &&
+      left.description == right.description &&
+      left.systemType == right.systemType &&
+      left.iconKey == right.iconKey &&
+      left.zone == right.zone &&
+      _sameIds(left.scopeIds, right.scopeIds) &&
+      _sameFunctions(left.functions, right.functions);
+}
+
+bool _sameFlow(ExchangeFlow left, ExchangeFlow right) {
+  return left.name == right.name &&
+      left.description == right.description &&
+      left.sourceId == right.sourceId &&
+      left.targetId == right.targetId &&
+      left.exchangedData == right.exchangedData &&
+      left.protocol == right.protocol &&
+      left.purpose == right.purpose &&
+      left.status == right.status;
+}
+
+WorkspaceMutation restoreVersion(
+  Workspace workspace, {
+  required String versionId,
+  String note = '',
+  required DateTime now,
+  bool confirm = false,
+}) {
+  final source = findVersion(workspace, versionId);
+  if (source == null) {
+    return _failure([
+      WorkspaceIssue(WorkspaceIssueCode.notFound, entityId: versionId),
+    ]);
+  }
+  final snapshot = source.snapshot;
+  final addedOrganizations = [
+    for (final organization in snapshot.organizations)
+      if (findOrganization(workspace, organization.id) == null) organization,
+  ];
+  final addedAssets = [
+    for (final asset in snapshot.assets)
+      if (findAsset(workspace, asset.id) == null) asset,
+  ];
+  final addedSystems = [
+    for (final system in snapshot.systems)
+      if (findSystem(workspace, system.id) == null) system,
+  ];
+  final addedFlows = [
+    for (final flow in snapshot.flows)
+      if (findFlow(workspace, flow.id) == null) flow,
+  ];
+  final conflicts = <String>[];
+  for (final organization in snapshot.organizations) {
+    final live = findOrganization(workspace, organization.id);
+    if (live != null && !_sameOrganization(live, organization)) {
+      conflicts.add(organization.id);
+    }
+  }
+  for (final asset in snapshot.assets) {
+    final live = findAsset(workspace, asset.id);
+    if (live != null && !_sameAsset(live, asset)) {
+      conflicts.add(asset.id);
+    }
+  }
+  for (final system in snapshot.systems) {
+    final live = findSystem(workspace, system.id);
+    if (live != null && !_sameSystem(live, system)) {
+      conflicts.add(system.id);
+    }
+  }
+  for (final flow in snapshot.flows) {
+    final live = findFlow(workspace, flow.id);
+    if (live != null && !_sameFlow(live, flow)) {
+      conflicts.add(flow.id);
+    }
+  }
+
+  final used = liveIds(workspace);
+  var counter = workspace.nextIdCounter < 1 ? 1 : workspace.nextIdCounter;
+  String allocate() {
+    var candidate = counter;
+    while (used.contains('n$candidate')) {
+      candidate += 1;
+    }
+    final id = 'n$candidate';
+    used.add(id);
+    counter = candidate + 1;
+    return id;
+  }
+
+  final schemaIdUsed = used.contains(snapshot.schema.id);
+  final workingSchemaId = schemaIdUsed ? allocate() : snapshot.schema.id;
+  used.add(workingSchemaId);
+  final addedIds = _uniqueIds([
+    for (final organization in addedOrganizations) organization.id,
+    for (final asset in addedAssets) asset.id,
+    for (final system in addedSystems) system.id,
+    for (final flow in addedFlows) flow.id,
+  ]);
+  final report = RestoreReport(
+    sourceVersionId: source.id,
+    workingSchemaId: workingSchemaId,
+    addedIds: addedIds,
+    conflictIds: _uniqueIds(conflicts),
+    schemaIdReassigned: schemaIdUsed,
+  );
+  if (!confirm) {
+    return _failure(const [
+      WorkspaceIssue(WorkspaceIssueCode.confirmationRequired),
+    ], restoreReport: report);
+  }
+
+  final stamp = asUtc(now);
+  final schema = WorkSchema(
+    id: workingSchemaId,
+    name: schemaIdUsed
+        ? '${snapshot.schema.name} (restaurada)'
+        : snapshot.schema.name,
+    description: snapshot.schema.description,
+    plantIds: snapshot.schema.plantIds,
+    assetIds: snapshot.schema.assetIds,
+    systemIds: snapshot.schema.systemIds,
+    flowIds: snapshot.schema.flowIds,
+    layout: snapshot.schema.layout,
+    createdAt: stamp,
+    updatedAt: stamp,
+  );
+  final versionIdNew = allocate();
+  final version = ArchitectureVersion(
+    id: versionIdNew,
+    schemaId: workingSchemaId,
+    createdAt: stamp,
+    note: note,
+    parentVersionId: source.id,
+    snapshot: ArchitectureSnapshot(
+      schema: schema,
+      organizations: [...workspace.organizations, ...addedOrganizations],
+      assets: [...workspace.assets, ...addedAssets],
+      systems: [...workspace.systems, ...addedSystems],
+      flows: [...workspace.flows, ...addedFlows],
+    ),
+  );
+  var nextCounter = counter;
+  for (final id in [...addedIds, workingSchemaId, versionIdNew]) {
+    nextCounter = _counterAfter(id, nextCounter);
+  }
+  return WorkspaceMutation.success(
+    workspace.copyWith(
+      nextIdCounter: nextCounter,
+      organizations: [...workspace.organizations, ...addedOrganizations],
+      assets: [...workspace.assets, ...addedAssets],
+      systems: [...workspace.systems, ...addedSystems],
+      flows: [...workspace.flows, ...addedFlows],
+      schemas: [...workspace.schemas, schema],
+      versions: [...workspace.versions, version],
+    ),
+    restoreReport: report,
   );
 }
 

@@ -441,4 +441,286 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Desat'), findsOneWidget);
   });
+
+  testWidgets('crea un esquema buit i en copia un altre', (tester) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+    final assets = repo.workspace.assets.length;
+    final systems = repo.workspace.systems.length;
+
+    await reveal(tester, find.byKey(workspaceSchemaMenuKey));
+    await tester.tap(find.byKey(workspaceSchemaMenuKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nou esquema…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(workspaceSchemaNameKey), 'Buit');
+    await tester.pump();
+    await tester.tap(find.byKey(workspaceSchemaCreateKey));
+    await tester.pumpAndSettle();
+
+    expect(repo.workspace.schemas, hasLength(2));
+    final created = repo.workspace.schemas.last;
+    expect(created.name, 'Buit');
+    expect(created.plantIds, isEmpty);
+    expect(created.assetIds, isEmpty);
+    expect(repo.workspace.assets, hasLength(assets));
+    final schemaDropdown = tester
+        .widgetList<DropdownButton<String>>(find.byType(DropdownButton<String>))
+        .firstWhere(
+          (dropdown) => dropdown.items!.any(
+            (item) => (item.child as Text).data == 'Buit',
+          ),
+        );
+    expect(schemaDropdown.value, created.id);
+
+    await reveal(tester, find.byKey(workspaceSchemaMenuKey));
+    await tester.tap(find.byKey(workspaceSchemaMenuKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copia l\'esquema actiu'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(workspaceCopySchemaNameKey),
+      'Còpia buida',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(workspaceCopySchemaCreateKey));
+    await tester.pumpAndSettle();
+
+    expect(repo.workspace.schemas, hasLength(3));
+    final copy = repo.workspace.schemas.last;
+    expect(copy.name, 'Còpia buida');
+    expect(copy.assetIds, created.assetIds);
+    expect(copy.plantIds, created.plantIds);
+    expect(repo.workspace.assets, hasLength(assets));
+    expect(repo.workspace.systems, hasLength(systems));
+    expect(find.text('Desat'), findsOneWidget);
+  });
+
+  testWidgets('canviar d\'esquema ajusta la planta activa si cal', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+
+    await reveal(tester, find.byKey(workspaceSchemaMenuKey));
+    await tester.tap(find.byKey(workspaceSchemaMenuKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nou esquema…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(workspaceSchemaNameKey), 'Només Lleida');
+    await tester.tap(find.byKey(const Key('schema-plant-n12')));
+    await tester.pump();
+    await tester.tap(find.byKey(workspaceSchemaCreateKey));
+    await tester.pumpAndSettle();
+
+    final created = repo.workspace.schemas.last;
+    expect(created.plantIds, ['n12']);
+
+    DropdownButton<String> dropdownWith(String label) {
+      return tester
+          .widgetList<DropdownButton<String>>(
+            find.byType(DropdownButton<String>),
+          )
+          .firstWhere(
+            (dropdown) => dropdown.items!.any(
+              (item) => (item.child as Text).data == label,
+            ),
+          );
+    }
+
+    expect(dropdownWith('Planta Lleida').value, 'n12');
+    final original = repo.workspace.schemas.first;
+    dropdownWith('Esquema alimentari').onChanged!(original.id);
+    await tester.pumpAndSettle();
+    dropdownWith('Planta Girona').onChanged!('n2');
+    await tester.pumpAndSettle();
+    expect(dropdownWith('Planta Girona').value, 'n2');
+    dropdownWith('Esquema alimentari').onChanged!(created.id);
+    await tester.pumpAndSettle();
+    expect(dropdownWith('Planta Lleida').value, 'n12');
+    expect(find.text('Desat'), findsOneWidget);
+  });
+
+  testWidgets('aplica una plantilla de màquines sobre una línia', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    final before = repo.workspace.assets.length;
+    final schemaBefore = repo.workspace.schemas.single.assetIds.length;
+    await pumpPage(tester, repo);
+    await select(tester, 'n4');
+
+    await tester.tap(find.byKey(workspaceTemplateKey));
+    await tester.pumpAndSettle();
+    expect(find.text('Omplidora'), findsWidgets);
+    expect(find.text('Taponadora'), findsWidgets);
+    expect(find.text('Etiquetadora'), findsWidgets);
+    await tester.tap(find.byKey(workspaceTemplateApplyKey));
+    await tester.pumpAndSettle();
+
+    expect(repo.workspace.assets, hasLength(before + 3));
+    final created = repo.workspace.assets.skip(before).toList();
+    expect(created.map((asset) => asset.parentId), everyElement('n4'));
+    expect(created.map((asset) => asset.kind), everyElement(AssetKind.machine));
+    expect(
+      created.map((asset) => asset.iconKey),
+      everyElement(IconKey.machine),
+    );
+    expect(repo.workspace.flows, isEmpty);
+    expect(repo.workspace.schemas.single.assetIds.length, schemaBefore + 3);
+    expect(find.text('Desat'), findsOneWidget);
+  });
+
+  testWidgets('els suggeriments es confirmen i es descarten d\'un en un', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+    await select(tester, 'n16');
+
+    Future<void> addSuggestedFlow(String name) async {
+      await select(tester, 'n16');
+      await tester.tap(find.byKey(workspaceAddKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flux').last);
+      await tester.pumpAndSettle();
+      tester
+              .widget<TextField>(
+                find.byKey(workspaceNameFieldKey, skipOffstage: false),
+              )
+              .controller!
+              .text =
+          name;
+      tester
+              .widget<TextField>(
+                find.byKey(workspaceFlowDataKey, skipOffstage: false),
+              )
+              .controller!
+              .text =
+          'Ordres';
+      tester
+              .widget<TextField>(
+                find.byKey(workspaceFlowPurposeKey, skipOffstage: false),
+              )
+              .controller!
+              .text =
+          'Enviar';
+      await tester.pump();
+      await reveal(
+        tester,
+        find.byKey(workspaceSaveEditKey, skipOffstage: false),
+      );
+      await tester.tap(find.byKey(workspaceSaveEditKey));
+      await tester.pumpAndSettle();
+    }
+
+    await addSuggestedFlow('Suggeriment u');
+    expect(repo.workspace.flows, hasLength(1));
+    final first = repo.workspace.flows.single;
+    expect(first.status, FlowStatus.suggested);
+    expect(
+      find.byKey(workspaceSuggestionsKey, skipOffstage: false),
+      findsOneWidget,
+    );
+    await reveal(
+      tester,
+      find.byKey(Key('suggestion-${first.id}'), skipOffstage: false),
+    );
+    expect(find.byKey(Key('suggestion-${first.id}')), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('suggestion-menu-${first.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirma el flux').last);
+    await tester.pumpAndSettle();
+    expect(repo.workspace.flows.single.status, FlowStatus.confirmed);
+    expect(
+      find.byKey(workspaceSuggestionsKey, skipOffstage: false),
+      findsNothing,
+    );
+
+    await addSuggestedFlow('Suggeriment dos');
+    expect(repo.workspace.flows, hasLength(2));
+    final second = repo.workspace.flows.last;
+    await reveal(
+      tester,
+      find.byKey(Key('suggestion-${second.id}'), skipOffstage: false),
+    );
+    await tester.tap(find.byKey(Key('suggestion-menu-${second.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Descarta').last);
+    await tester.pumpAndSettle();
+    final confirm = tester.widget<TextButton>(
+      find.byKey(workspaceConfirmDeleteKey),
+    );
+    confirm.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(findFlow(repo.workspace, second.id), isNull);
+    expect(repo.workspace.flows, hasLength(1));
+    expect(find.text('Desat'), findsOneWidget);
+  });
+
+  testWidgets('crea una instantània i la restaura amb confirmació', (
+    tester,
+  ) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+
+    await tester.tap(find.byKey(workspaceSnapshotKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(workspaceSnapshotNoteKey), 'Base');
+    await tester.tap(find.byKey(workspaceSnapshotCreateKey));
+    await tester.pumpAndSettle();
+    expect(repo.workspace.versions, hasLength(1));
+    final source = repo.workspace.versions.single;
+    expect(source.note, 'Base');
+    expect(source.snapshot.schema.id, 'n20');
+    expect(source.snapshot.assets, hasLength(repo.workspace.assets.length));
+
+    await select(tester, 'n4');
+    await tester.enterText(find.byKey(workspaceNameFieldKey), 'Línia nova');
+    await reveal(tester, find.byKey(workspaceSaveEditKey, skipOffstage: false));
+    final save = tester.widget<FilledButton>(
+      find.byKey(workspaceSaveEditKey, skipOffstage: false),
+    );
+    save.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(findAsset(repo.workspace, 'n4')!.name, 'Línia nova');
+
+    await select(tester, 'n5');
+    await reveal(tester, find.byKey(workspaceDeleteKey, skipOffstage: false));
+    await tester.tap(find.byKey(workspaceDeleteKey));
+    await tester.pumpAndSettle();
+    final delete = tester.widget<TextButton>(
+      find.byKey(workspaceConfirmDeleteKey),
+    );
+    delete.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(findAsset(repo.workspace, 'n5'), isNull);
+
+    await reveal(tester, find.byKey(workspaceVersionsKey));
+    await tester.tap(find.byKey(workspaceVersionsKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('restore-${source.id}')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('IDs afegits: n5'), findsOneWidget);
+    expect(find.textContaining('Conflictes'), findsOneWidget);
+    expect(find.textContaining('n4'), findsOneWidget);
+    await tester.tap(find.byKey(workspaceConfirmRestoreKey));
+    await tester.pumpAndSettle();
+
+    expect(findAsset(repo.workspace, 'n5'), isNotNull);
+    expect(findAsset(repo.workspace, 'n4')!.name, 'Línia nova');
+    expect(repo.workspace.versions, hasLength(2));
+    final restoredVersion = repo.workspace.versions.last;
+    expect(restoredVersion.parentVersionId, source.id);
+    expect(repo.workspace.schemas, hasLength(2));
+    expect(restoredVersion.schemaId, repo.workspace.schemas.last.id);
+    expect(find.text('Desat'), findsOneWidget);
+  });
 }
