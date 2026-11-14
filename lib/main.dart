@@ -10,6 +10,7 @@ import 'workspace_idb.dart';
 import 'workspace_idb_factory.dart';
 import 'workspace_page.dart';
 import 'workspace_repository.dart';
+import 'workspace_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,26 +55,24 @@ class _OeeAppState extends State<OeeApp> {
     };
     return MaterialApp(
       title: title,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F6E56)),
-        inputDecorationTheme: const InputDecorationTheme(
-          constraints: BoxConstraints(minHeight: 48),
-        ),
-      ),
+      theme: workspaceTheme(),
       home: switch (_screen) {
         _Screen.map when workspace != null => WorkspacePage(
           repository: workspace,
           onOpenOee: () => setState(() => _screen = _Screen.oee),
+          onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenData: () => setState(() => _screen = _Screen.data),
         ),
         _Screen.map => PlantMapPage(
           store: widget.store,
           onOpenOee: () => setState(() => _screen = _Screen.oee),
+          onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenData: null,
         ),
         _Screen.data when workspace != null => DataFoundationPage(
           repository: workspace,
           onOpenOee: () => setState(() => _screen = _Screen.oee),
+          onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenMap: () => setState(() => _screen = _Screen.map),
         ),
         _Screen.engine => OeeEnginePage(

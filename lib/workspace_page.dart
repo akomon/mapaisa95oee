@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'flow_suggestions.dart';
@@ -10,6 +9,7 @@ import 'workspace_codec.dart';
 import 'workspace_model.dart';
 import 'workspace_phase_c.dart';
 import 'workspace_repository.dart';
+import 'workspace_shell.dart';
 import 'workspace_theme.dart';
 import 'oee_history_panel.dart';
 
@@ -52,6 +52,7 @@ class WorkspacePage extends StatefulWidget {
     super.key,
     required this.repository,
     this.onOpenOee,
+    this.onOpenEngine,
     this.onOpenData,
     this.exportJson,
     this.importJson,
@@ -59,6 +60,7 @@ class WorkspacePage extends StatefulWidget {
 
   final WorkspaceRepository repository;
   final VoidCallback? onOpenOee;
+  final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenData;
   final Future<void> Function(String filename, String json)? exportJson;
   final Future<String?> Function()? importJson;
@@ -1232,44 +1234,30 @@ class _WorkspacePageState extends State<WorkspacePage> {
       widget.repository.status,
       quotaExceeded: widget.repository.quotaExceeded,
     );
-    return Theme(
-      data: workspaceTheme(),
-      child: Scaffold(
-        backgroundColor: canvas,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 1100;
-              return Column(
-                children: [
-                  _header(wide),
-                  Expanded(
-                    child: wide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _rail(),
-                              SizedBox(width: 248, child: _tree()),
-                              Expanded(child: _map()),
-                              SizedBox(width: 320, child: _inspector()),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              if (_treeOpen) Expanded(flex: 5, child: _tree()),
-                              Expanded(flex: 4, child: _map()),
-                              if (_inspectorOpen)
-                                Expanded(flex: 6, child: _inspector()),
-                            ],
-                          ),
-                  ),
-                  _bottom(status, wide),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
+    final wide = MediaQuery.sizeOf(context).width >= 1100;
+    return WorkspaceShell(
+      current: WorkspaceSection.map,
+      onOpenCalculator: widget.onOpenOee,
+      onOpenEngine: widget.onOpenEngine,
+      onOpenData: widget.onOpenData,
+      header: _header(wide),
+      bottom: _bottom(status, wide),
+      child: wide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 248, child: _tree()),
+                Expanded(child: _map()),
+                SizedBox(width: 320, child: _inspector()),
+              ],
+            )
+          : Column(
+              children: [
+                if (_treeOpen) Expanded(flex: 5, child: _tree()),
+                Expanded(flex: 4, child: _map()),
+                if (_inspectorOpen) Expanded(flex: 6, child: _inspector()),
+              ],
+            ),
     );
   }
 
@@ -1307,18 +1295,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (widget.onOpenOee != null)
-                      _nav(
-                        Icons.calculate_outlined,
-                        'Calculador OEE',
-                        widget.onOpenOee!,
-                      ),
-                    if (widget.onOpenData != null)
-                      _nav(
-                        Icons.folder_outlined,
-                        'Dades locals',
-                        widget.onOpenData!,
-                      ),
                     _addMenu(),
                     if (_workspace.organizations.isEmpty &&
                         _workspace.systems.isEmpty)
@@ -1361,15 +1337,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
-  Widget _nav(IconData icon, String label, VoidCallback onPressed) {
-    return OutlinedButton.icon(
-      style: workspaceControlStyle,
-      onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(label),
-    );
-  }
-
   Widget _addMenu() {
     return PopupMenuButton<_Draft>(
       key: workspaceAddKey,
@@ -1392,45 +1359,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
             mainAxisSize: MainAxisSize.min,
             children: [Icon(Icons.add), SizedBox(width: 6), Text('Afegeix')],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _rail() {
-    return Container(
-      width: 76,
-      color: anthracite,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        children: [
-          if (widget.onOpenOee != null)
-            _railButton(Icons.calculate_outlined, 'OEE', widget.onOpenOee!),
-          _railButton(Icons.account_tree, 'Mapa', () {}),
-          if (widget.onOpenData != null)
-            _railButton(Icons.folder_outlined, 'Dades', widget.onOpenData!),
-        ],
-      ),
-    );
-  }
-
-  Widget _railButton(IconData icon, String label, VoidCallback onPressed) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: TextButton(
-        style: TextButton.styleFrom(
-          foregroundColor: panel,
-          minimumSize: const Size(64, 48),
-          backgroundColor: label == 'Mapa'
-              ? const Color(0xFF2A333C)
-              : Colors.transparent,
-        ),
-        onPressed: onPressed,
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: panel),
-            Text(label, style: const TextStyle(fontSize: 11, color: panel)),
-          ],
         ),
       ),
     );
@@ -2566,137 +2494,120 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Widget _bottom(String status, bool wide) {
-    return Material(
-      color: const Color(0xFFE6EBEF),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children:
-                  [
-                        OutlinedButton(
-                          key: workspaceZoomInKey,
-                          style: workspaceControlStyle,
-                          onPressed: () => _zoom(1.15),
-                          child: const Text('Apropa'),
-                        ),
-                        OutlinedButton(
-                          key: workspaceZoomOutKey,
-                          style: workspaceControlStyle,
-                          onPressed: () => _zoom(1 / 1.15),
-                          child: const Text('Allunya'),
-                        ),
-                        OutlinedButton(
-                          key: workspaceFitKey,
-                          style: workspaceControlStyle,
-                          onPressed: _fit,
-                          child: const Text('Enquadra'),
-                        ),
-                        OutlinedButton(
-                          style: workspaceControlStyle,
-                          onPressed: () => _pan(48, 0),
-                          child: const Text('Esquerra'),
-                        ),
-                        OutlinedButton(
-                          style: workspaceControlStyle,
-                          onPressed: () => _pan(-48, 0),
-                          child: const Text('Dreta'),
-                        ),
-                        OutlinedButton(
-                          style: workspaceControlStyle,
-                          onPressed: () => _pan(0, 48),
-                          child: const Text('Amunt'),
-                        ),
-                        OutlinedButton(
-                          style: workspaceControlStyle,
-                          onPressed: () => _pan(0, -48),
-                          child: const Text('Avall'),
-                        ),
-                        Text(
-                          status,
-                          key: workspaceSaveStatusKey,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        OutlinedButton(
-                          key: workspaceNewSchemaKey,
-                          style: workspaceControlStyle,
-                          onPressed:
-                              widget.repository.status == SaveStatus.saving
-                              ? null
-                              : _createSchema,
-                          child: const Text('Nou esquema'),
-                        ),
-                        if (_schemaId != null)
-                          OutlinedButton(
-                            key: workspaceCopySchemaKey,
-                            style: workspaceControlStyle,
-                            onPressed:
-                                widget.repository.status == SaveStatus.saving
-                                ? null
-                                : _copySchema,
-                            child: const Text('Copia l\'esquema'),
-                          ),
-                        OutlinedButton(
-                          key: workspaceSnapshotKey,
-                          style: workspaceControlStyle,
-                          onPressed:
-                              widget.repository.status == SaveStatus.saving ||
-                                  _schemaId == null
-                              ? null
-                              : _createSnapshot,
-                          child: const Text('Nova instantània'),
-                        ),
-                        OutlinedButton(
-                          key: workspaceVersionsKey,
-                          style: workspaceControlStyle,
-                          onPressed: _openVersions,
-                          child: Text(
-                            'Versions: ${_workspace.versions.length}',
-                          ),
-                        ),
-                        OutlinedButton(
-                          key: workspaceHistoryKey,
-                          style: workspaceControlStyle,
-                          onPressed: () => setState(() {
-                            _showAllHistory = true;
-                            _pendingOee = null;
-                            _inspectorOpen = true;
-                            _oeeEpoch += 1;
-                          }),
-                          child: const Text('Històric OEE'),
-                        ),
-                        OutlinedButton(
-                          key: workspaceExportKey,
-                          style: workspaceControlStyle,
-                          onPressed:
-                              widget.repository.status == SaveStatus.saving
-                              ? null
-                              : _exportBackup,
-                          child: const Text('Exporta còpia'),
-                        ),
-                        OutlinedButton(
-                          key: workspaceImportKey,
-                          style: workspaceControlStyle,
-                          onPressed:
-                              widget.repository.status == SaveStatus.saving
-                              ? null
-                              : _importBackup,
-                          child: const Text('Importa còpia'),
-                        ),
-                      ]
-                      .map(
-                        (child) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: child,
-                        ),
-                      )
-                      .toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        WorkspaceBottomBar(
+          children: [
+            OutlinedButton(
+              key: workspaceZoomInKey,
+              style: workspaceControlStyle,
+              onPressed: () => _zoom(1.15),
+              child: const Text('Apropa'),
             ),
-          ),
-          const SizedBox(
+            OutlinedButton(
+              key: workspaceZoomOutKey,
+              style: workspaceControlStyle,
+              onPressed: () => _zoom(1 / 1.15),
+              child: const Text('Allunya'),
+            ),
+            OutlinedButton(
+              key: workspaceFitKey,
+              style: workspaceControlStyle,
+              onPressed: _fit,
+              child: const Text('Enquadra'),
+            ),
+            OutlinedButton(
+              style: workspaceControlStyle,
+              onPressed: () => _pan(48, 0),
+              child: const Text('Esquerra'),
+            ),
+            OutlinedButton(
+              style: workspaceControlStyle,
+              onPressed: () => _pan(-48, 0),
+              child: const Text('Dreta'),
+            ),
+            OutlinedButton(
+              style: workspaceControlStyle,
+              onPressed: () => _pan(0, 48),
+              child: const Text('Amunt'),
+            ),
+            OutlinedButton(
+              style: workspaceControlStyle,
+              onPressed: () => _pan(0, -48),
+              child: const Text('Avall'),
+            ),
+            Text(
+              status,
+              key: workspaceSaveStatusKey,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            OutlinedButton(
+              key: workspaceNewSchemaKey,
+              style: workspaceControlStyle,
+              onPressed: widget.repository.status == SaveStatus.saving
+                  ? null
+                  : _createSchema,
+              child: const Text('Nou esquema'),
+            ),
+            if (_schemaId != null)
+              OutlinedButton(
+                key: workspaceCopySchemaKey,
+                style: workspaceControlStyle,
+                onPressed: widget.repository.status == SaveStatus.saving
+                    ? null
+                    : _copySchema,
+                child: const Text('Copia l\'esquema'),
+              ),
+            OutlinedButton(
+              key: workspaceSnapshotKey,
+              style: workspaceControlStyle,
+              onPressed:
+                  widget.repository.status == SaveStatus.saving ||
+                      _schemaId == null
+                  ? null
+                  : _createSnapshot,
+              child: const Text('Nova instantània'),
+            ),
+            OutlinedButton(
+              key: workspaceVersionsKey,
+              style: workspaceControlStyle,
+              onPressed: _openVersions,
+              child: Text('Versions: ${_workspace.versions.length}'),
+            ),
+            OutlinedButton(
+              key: workspaceHistoryKey,
+              style: workspaceControlStyle,
+              onPressed: () => setState(() {
+                _showAllHistory = true;
+                _pendingOee = null;
+                _inspectorOpen = true;
+                _oeeEpoch += 1;
+              }),
+              child: const Text('Històric OEE'),
+            ),
+            OutlinedButton(
+              key: workspaceExportKey,
+              style: workspaceControlStyle,
+              onPressed: widget.repository.status == SaveStatus.saving
+                  ? null
+                  : _exportBackup,
+              child: const Text('Exporta còpia'),
+            ),
+            OutlinedButton(
+              key: workspaceImportKey,
+              style: workspaceControlStyle,
+              onPressed: widget.repository.status == SaveStatus.saving
+                  ? null
+                  : _importBackup,
+              child: const Text('Importa còpia'),
+            ),
+          ],
+        ),
+        Material(
+          color: bottomBarSurface,
+          child: const SizedBox(
             height: 72,
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
@@ -2706,8 +2617,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

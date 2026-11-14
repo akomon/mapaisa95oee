@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'plant_io.dart' as plant_io;
 import 'plant_model.dart';
 import 'plant_store.dart';
+import 'workspace_shell.dart';
+import 'workspace_theme.dart';
 
 const Key plantMapTreeTabKey = Key('plantMapTreeTab');
 const Key plantMapLevelsTabKey = Key('plantMapLevelsTab');
@@ -22,6 +24,7 @@ class PlantMapPage extends StatefulWidget {
     super.key,
     required this.store,
     this.onOpenOee,
+    this.onOpenEngine,
     this.onOpenData,
     this.exportJson,
     this.importJson,
@@ -29,6 +32,7 @@ class PlantMapPage extends StatefulWidget {
 
   final PlantStore store;
   final VoidCallback? onOpenOee;
+  final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenData;
   final PlantJsonExporter? exportJson;
   final PlantJsonImporter? importJson;
@@ -81,7 +85,8 @@ class _PlantMapPageState extends State<PlantMapPage>
         ? plantIssueMessage(PlantIssueCode.invalidJson)
         : plantIssueMessage(issues.first);
     setState(() => _banner = message);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _loadExample() async {
@@ -99,9 +104,8 @@ class _PlantMapPageState extends State<PlantMapPage>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('JSON exportat.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('JSON exportat.')));
   }
 
   Future<void> _import() async {
@@ -257,16 +261,46 @@ class _PlantMapPageState extends State<PlantMapPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa ISA-95'),
-        actions: [
-          if (widget.onOpenOee != null)
-            TextButton(
-              onPressed: widget.onOpenOee,
-              child: const Text('Calculador OEE'),
-            ),
-        ],
+    final actions = <Widget>[
+      OutlinedButton(
+        key: plantMapAddEnterpriseKey,
+        style: workspaceControlStyle,
+        onPressed: _addEnterprise,
+        child: const Text('Afegeix empresa'),
+      ),
+      OutlinedButton(
+        key: plantMapLoadExampleKey,
+        style: workspaceControlStyle,
+        onPressed: _loadExample,
+        child: const Text('Carrega exemple'),
+      ),
+      OutlinedButton(
+        key: plantMapExportKey,
+        style: workspaceControlStyle,
+        onPressed: _export,
+        child: const Text('Exporta JSON'),
+      ),
+      OutlinedButton(
+        key: plantMapImportKey,
+        style: workspaceControlStyle,
+        onPressed: _import,
+        child: const Text('Importa JSON'),
+      ),
+      if (widget.onOpenOee != null)
+        workspaceBarButton(
+          label: 'Calculador OEE',
+          onPressed: widget.onOpenOee,
+        ),
+      if (widget.onOpenData != null)
+        workspaceBarButton(label: 'Dades locals', onPressed: widget.onOpenData),
+    ];
+    return WorkspaceShell(
+      current: WorkspaceSection.map,
+      onOpenCalculator: widget.onOpenOee,
+      onOpenEngine: widget.onOpenEngine,
+      onOpenData: widget.onOpenData,
+      header: WorkspaceHeader(
+        title: 'Mapa ISA-95',
         bottom: TabBar(
           controller: _tabs,
           tabs: const [
@@ -275,81 +309,43 @@ class _PlantMapPageState extends State<PlantMapPage>
           ],
         ),
       ),
-      body: _loading || _plant == null
+      bottom: WorkspaceBottomBar(children: actions),
+      child: _loading || _plant == null
           ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
-                  child: Column(
-                    children: [
+          : Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(
+                  children: [
+                    if (_banner != null)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              key: plantMapAddEnterpriseKey,
-                              onPressed: _addEnterprise,
-                              child: const Text('Afegeix empresa'),
-                            ),
-                            OutlinedButton(
-                              key: plantMapLoadExampleKey,
-                              onPressed: _loadExample,
-                              child: const Text('Carrega exemple'),
-                            ),
-                            OutlinedButton(
-                              key: plantMapExportKey,
-                              onPressed: _export,
-                              child: const Text('Exporta JSON'),
-                            ),
-                            OutlinedButton(
-                              key: plantMapImportKey,
-                              onPressed: _import,
-                              child: const Text('Importa JSON'),
-                            ),
-                            if (widget.onOpenData != null)
-                              OutlinedButton(
-                                style: const ButtonStyle(
-                                  minimumSize: WidgetStatePropertyAll(Size(48, 48)),
-                                ),
-                                onPressed: widget.onOpenData,
-                                child: const Text('Dades locals'),
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (_banner != null)
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              _banner!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
+                        padding: const EdgeInsets.all(12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _banner!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                         ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabs,
-                          children: [
-                            _TreeView(
-                              plant: _plant!,
-                              onAddChild: _addChild,
-                              onEdit: _editNode,
-                              onDelete: _deleteNode,
-                            ),
-                            _LevelsView(plant: _plant!),
-                          ],
-                        ),
                       ),
-                    ],
-                  ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _TreeView(
+                            plant: _plant!,
+                            onAddChild: _addChild,
+                            onEdit: _editNode,
+                            onDelete: _deleteNode,
+                          ),
+                          _LevelsView(plant: _plant!),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -416,11 +412,7 @@ class _NodeEditorDialogState extends State<_NodeEditorDialog> {
       return;
     }
     Navigator.of(context).pop(
-      _NodeDraft(
-        name: trimmed,
-        description: _description.text,
-        level: _level,
-      ),
+      _NodeDraft(name: trimmed, description: _description.text, level: _level),
     );
   }
 
@@ -612,9 +604,7 @@ class _TreeRow extends StatelessWidget {
                         tooltip: expanded ? 'Replega' : 'Desplega',
                         onPressed: onToggle,
                         icon: Icon(
-                          expanded
-                              ? Icons.expand_more
-                              : Icons.chevron_right,
+                          expanded ? Icons.expand_more : Icons.chevron_right,
                         ),
                       )
                     : const SizedBox.shrink(),
@@ -655,10 +645,7 @@ class _TreeRow extends StatelessWidget {
                       child: Text('Afegeix fill'),
                     ),
                   const PopupMenuItem(value: 'edit', child: Text('Edita')),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Esborra'),
-                  ),
+                  const PopupMenuItem(value: 'delete', child: Text('Esborra')),
                 ],
               ),
             ],

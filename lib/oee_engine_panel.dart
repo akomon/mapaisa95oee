@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'oee_engine.dart';
 import 'workspace_model.dart';
+import 'workspace_shell.dart';
 import 'workspace_theme.dart';
 
 const Key enginePlannedKey = Key('enginePlannedMinutes');
@@ -34,53 +35,31 @@ class OeeEnginePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: workspaceTheme(),
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: anthracite,
-          foregroundColor: panel,
-          title: const Text('Càlcul OEE'),
+    final actions = <Widget>[
+      if (onOpenCalculator != null)
+        workspaceBarButton(
+          label: 'Calculador US-1',
+          onPressed: onOpenCalculator,
         ),
-        body: SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (onOpenCalculator != null) ...[
-                      OutlinedButton(
-                        style: workspaceControlStyle,
-                        onPressed: onOpenCalculator,
-                        child: const Text('Calculador US-1'),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (onOpenMap != null) ...[
-                      OutlinedButton(
-                        style: workspaceControlStyle,
-                        onPressed: onOpenMap,
-                        child: const Text('Mapa ISA-95'),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (onOpenData != null) ...[
-                      OutlinedButton(
-                        style: workspaceControlStyle,
-                        onPressed: onOpenData,
-                        child: const Text('Dades locals'),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    OeeEnginePanel(lineName: lineName),
-                  ],
-                ),
-              ),
-            ),
+      if (onOpenMap != null)
+        workspaceBarButton(label: 'Mapa ISA-95', onPressed: onOpenMap),
+      if (onOpenData != null)
+        workspaceBarButton(label: 'Dades locals', onPressed: onOpenData),
+    ];
+    return WorkspaceShell(
+      current: WorkspaceSection.engine,
+      onOpenCalculator: onOpenCalculator,
+      onOpenMap: onOpenMap,
+      onOpenData: onOpenData,
+      header: const WorkspaceHeader(title: 'Càlcul OEE'),
+      bottom: actions.isEmpty ? null : WorkspaceBottomBar(children: actions),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: OeeEnginePanel(lineName: lineName),
           ),
         ),
       ),

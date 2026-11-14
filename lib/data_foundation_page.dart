@@ -4,6 +4,7 @@ import 'legacy_key_probe.dart';
 import 'plant_io.dart' as plant_io;
 import 'workspace_model.dart';
 import 'workspace_repository.dart';
+import 'workspace_shell.dart';
 
 const Key saveStatusKey = Key('saveStatus');
 const Key backupJsonFieldKey = Key('backupJsonField');
@@ -34,6 +35,7 @@ class DataFoundationPage extends StatefulWidget {
     super.key,
     required this.repository,
     this.onOpenOee,
+    this.onOpenEngine,
     this.onOpenMap,
     this.exportJson,
     this.importJson,
@@ -41,6 +43,7 @@ class DataFoundationPage extends StatefulWidget {
 
   final WorkspaceRepository repository;
   final VoidCallback? onOpenOee;
+  final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenMap;
   final WorkspaceJsonExporter? exportJson;
   final WorkspaceJsonImporter? importJson;
@@ -153,201 +156,192 @@ class _DataFoundationPageState extends State<DataFoundationPage> {
       repository.status,
       quotaExceeded: repository.quotaExceeded,
     );
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dades locals')),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (widget.onOpenOee != null)
-                        OutlinedButton(
-                          style: touchButtonStyle,
-                          onPressed: widget.onOpenOee,
-                          child: const Text('Calculador OEE'),
-                        ),
-                      if (widget.onOpenMap != null)
-                        OutlinedButton(
-                          style: touchButtonStyle,
-                          onPressed: widget.onOpenMap,
-                          child: const Text('Mapa ISA-95'),
-                        ),
-                    ],
+    final actions = <Widget>[
+      if (widget.onOpenOee != null)
+        workspaceBarButton(
+          label: 'Calculador OEE',
+          onPressed: widget.onOpenOee,
+        ),
+      if (widget.onOpenMap != null)
+        workspaceBarButton(label: 'Mapa ISA-95', onPressed: widget.onOpenMap),
+    ];
+    return WorkspaceShell(
+      current: WorkspaceSection.data,
+      onOpenCalculator: widget.onOpenOee,
+      onOpenEngine: widget.onOpenEngine,
+      onOpenMap: widget.onOpenMap,
+      header: const WorkspaceHeader(title: 'Dades locals'),
+      bottom: actions.isEmpty ? null : WorkspaceBottomBar(children: actions),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  key: saveStatusKey,
+                  liveRegion: true,
+                  label: status,
+                  child: Text(
+                    status,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
-                  Semantics(
-                    key: saveStatusKey,
-                    liveRegion: true,
-                    label: status,
-                    child: Text(
-                      status,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  if (repository.banner != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      repository.banner!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  const Text(storageLimitationMessage),
-                  const SizedBox(height: 12),
-                  Text(
-                    repository.legacyKeyPresent
-                        ? 'Clau legacy mapaisa95oee.plant.v1: present (${repository.legacyCharCount} caràcters).'
-                        : 'Clau legacy mapaisa95oee.plant.v1: absent.',
-                    key: legacyKeyStatusKey,
-                  ),
-                  if (browserKey != null)
-                    Text(
-                      browserKey
-                          ? 'localStorage $legacyBrowserStorageKey: present.'
-                          : 'localStorage $legacyBrowserStorageKey: absent.',
-                    ),
-                  if (repository.legacyKeyPresent)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'La clau legacy no s\'esborra ni es reescriu. Si el text divergeix, es reconcilia amb el model canònic sense promoure nivells antics i sense modificar instantànies ni registres OEE.',
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Organitzacions: ${workspace.organizations.length} · Actius: ${workspace.assets.length} · Sistemes: ${workspace.systems.length} · Fluxos: ${workspace.flows.length} · Esquemes: ${workspace.schemas.length} · Versions: ${workspace.versions.length} · Registres OEE: ${workspace.oeeRecords.length}',
-                  ),
+                ),
+                if (repository.banner != null) ...[
                   const SizedBox(height: 8),
-                  const Text(
-                    'Els registres OEE no formen part dels snapshots.',
-                  ),
-                  if (workspace.migrationReviews.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Revisions',
-                      style: Theme.of(context).textTheme.titleMedium,
+                  Text(
+                    repository.banner!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                    for (final review in workspace.migrationReviews)
-                      _ReviewTile(
-                        review: review,
-                        name: _entityName(workspace, review.entityId),
-                        enabled: repository.status != SaveStatus.saving,
-                        onAcknowledge: () => repository.acknowledge(review.id),
-                      ),
-                  ],
-                  const SizedBox(height: 16),
-                  for (final organization in workspace.organizations)
-                    Text('${organization.name} · Sense funció ISA-95'),
-                  for (final asset in workspace.assets)
-                    Text(
-                      '${asset.name} · ${assetKindLabel(asset.kind)} · ${asset.functions.isEmpty ? 'Sense funcions' : asset.functions.map(isaFunctionLabel).join(', ')}',
-                    ),
-                  for (final system in workspace.systems)
-                    Text(
-                      '${system.name} · ${systemTypeLabel(system.systemType)} · ${system.functions.isEmpty ? 'Sense funcions' : system.functions.map(isaFunctionLabel).join(', ')} · ${itOtZoneLabel(system.zone)} · abast ${_scopeNames(workspace, system)}',
-                    ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton(
-                        key: exportBackupKey,
-                        style: touchButtonStyle,
-                        onPressed: repository.status == SaveStatus.saving
-                            ? null
-                            : () => _export(
-                                'mapaisa95oee-backup.json',
-                                repository.exportBackupJson(),
-                              ),
-                        child: const Text('Exporta còpia'),
-                      ),
-                      if (repository.recoverableLegacyRaw != null)
-                        OutlinedButton(
-                          key: downloadLegacyKey,
-                          style: touchButtonStyle,
-                          onPressed: () => _export(
-                            'mapaisa95oee-legacy-plant.json',
-                            repository.recoverableLegacyRaw!,
-                          ),
-                          child: const Text('Descarrega la còpia legacy'),
-                        ),
-                      if (workspace.latestLegacyRaw != null)
-                        OutlinedButton(
-                          key: downloadLatestLegacyKey,
-                          style: touchButtonStyle,
-                          onPressed: () => _export(
-                            'mapaisa95oee-legacy-latest.json',
-                            workspace.latestLegacyRaw!,
-                          ),
-                          child: const Text('Descarrega el legacy més recent'),
-                        ),
-                      OutlinedButton(
-                        key: loadFoodExampleKey,
-                        style: touchButtonStyle,
-                        onPressed: repository.status == SaveStatus.saving
-                            ? null
-                            : _loadExample,
-                        child: const Text('Carrega exemple alimentari'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    key: backupJsonFieldKey,
-                    controller: _json,
-                    minLines: 3,
-                    maxLines: 6,
-                    style: const TextStyle(fontSize: 16, height: 1.25),
-                    decoration: const InputDecoration(
-                      labelText: 'JSON de la còpia',
-                      constraints: BoxConstraints(minHeight: 48),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton(
-                        key: prepareReplaceKey,
-                        style: touchButtonStyle,
-                        onPressed: repository.status == SaveStatus.saving
-                            ? null
-                            : _prepare,
-                        child: const Text('Prepara substitució'),
-                      ),
-                      OutlinedButton(
-                        style: touchButtonStyle,
-                        onPressed: repository.status == SaveStatus.saving
-                            ? null
-                            : () async {
-                                final importer =
-                                    widget.importJson ?? plant_io.pickJsonFile;
-                                final raw = await importer();
-                                if (raw == null) {
-                                  return;
-                                }
-                                _json.text = raw;
-                              },
-                        child: const Text('Tria un fitxer'),
-                      ),
-                    ],
                   ),
                 ],
-              ),
+                const SizedBox(height: 12),
+                const Text(storageLimitationMessage),
+                const SizedBox(height: 12),
+                Text(
+                  repository.legacyKeyPresent
+                      ? 'Clau legacy mapaisa95oee.plant.v1: present (${repository.legacyCharCount} caràcters).'
+                      : 'Clau legacy mapaisa95oee.plant.v1: absent.',
+                  key: legacyKeyStatusKey,
+                ),
+                if (browserKey != null)
+                  Text(
+                    browserKey
+                        ? 'localStorage $legacyBrowserStorageKey: present.'
+                        : 'localStorage $legacyBrowserStorageKey: absent.',
+                  ),
+                if (repository.legacyKeyPresent)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'La clau legacy no s\'esborra ni es reescriu. Si el text divergeix, es reconcilia amb el model canònic sense promoure nivells antics i sense modificar instantànies ni registres OEE.',
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Text(
+                  'Organitzacions: ${workspace.organizations.length} · Actius: ${workspace.assets.length} · Sistemes: ${workspace.systems.length} · Fluxos: ${workspace.flows.length} · Esquemes: ${workspace.schemas.length} · Versions: ${workspace.versions.length} · Registres OEE: ${workspace.oeeRecords.length}',
+                ),
+                const SizedBox(height: 8),
+                const Text('Els registres OEE no formen part dels snapshots.'),
+                if (workspace.migrationReviews.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Revisions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  for (final review in workspace.migrationReviews)
+                    _ReviewTile(
+                      review: review,
+                      name: _entityName(workspace, review.entityId),
+                      enabled: repository.status != SaveStatus.saving,
+                      onAcknowledge: () => repository.acknowledge(review.id),
+                    ),
+                ],
+                const SizedBox(height: 16),
+                for (final organization in workspace.organizations)
+                  Text('${organization.name} · Sense funció ISA-95'),
+                for (final asset in workspace.assets)
+                  Text(
+                    '${asset.name} · ${assetKindLabel(asset.kind)} · ${asset.functions.isEmpty ? 'Sense funcions' : asset.functions.map(isaFunctionLabel).join(', ')}',
+                  ),
+                for (final system in workspace.systems)
+                  Text(
+                    '${system.name} · ${systemTypeLabel(system.systemType)} · ${system.functions.isEmpty ? 'Sense funcions' : system.functions.map(isaFunctionLabel).join(', ')} · ${itOtZoneLabel(system.zone)} · abast ${_scopeNames(workspace, system)}',
+                  ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      key: exportBackupKey,
+                      style: touchButtonStyle,
+                      onPressed: repository.status == SaveStatus.saving
+                          ? null
+                          : () => _export(
+                              'mapaisa95oee-backup.json',
+                              repository.exportBackupJson(),
+                            ),
+                      child: const Text('Exporta còpia'),
+                    ),
+                    if (repository.recoverableLegacyRaw != null)
+                      OutlinedButton(
+                        key: downloadLegacyKey,
+                        style: touchButtonStyle,
+                        onPressed: () => _export(
+                          'mapaisa95oee-legacy-plant.json',
+                          repository.recoverableLegacyRaw!,
+                        ),
+                        child: const Text('Descarrega la còpia legacy'),
+                      ),
+                    if (workspace.latestLegacyRaw != null)
+                      OutlinedButton(
+                        key: downloadLatestLegacyKey,
+                        style: touchButtonStyle,
+                        onPressed: () => _export(
+                          'mapaisa95oee-legacy-latest.json',
+                          workspace.latestLegacyRaw!,
+                        ),
+                        child: const Text('Descarrega el legacy més recent'),
+                      ),
+                    OutlinedButton(
+                      key: loadFoodExampleKey,
+                      style: touchButtonStyle,
+                      onPressed: repository.status == SaveStatus.saving
+                          ? null
+                          : _loadExample,
+                      child: const Text('Carrega exemple alimentari'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  key: backupJsonFieldKey,
+                  controller: _json,
+                  minLines: 3,
+                  maxLines: 6,
+                  style: const TextStyle(fontSize: 16, height: 1.25),
+                  decoration: const InputDecoration(
+                    labelText: 'JSON de la còpia',
+                    constraints: BoxConstraints(minHeight: 48),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      key: prepareReplaceKey,
+                      style: touchButtonStyle,
+                      onPressed: repository.status == SaveStatus.saving
+                          ? null
+                          : _prepare,
+                      child: const Text('Prepara substitució'),
+                    ),
+                    OutlinedButton(
+                      style: touchButtonStyle,
+                      onPressed: repository.status == SaveStatus.saving
+                          ? null
+                          : () async {
+                              final importer =
+                                  widget.importJson ?? plant_io.pickJsonFile;
+                              final raw = await importer();
+                              if (raw == null) {
+                                return;
+                              }
+                              _json.text = raw;
+                            },
+                      child: const Text('Tria un fitxer'),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

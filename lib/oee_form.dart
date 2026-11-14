@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'oee_calculator.dart';
+import 'workspace_shell.dart';
 
 const Key plannedMinutesKey = Key('plannedMinutes');
 const Key downtimeMinutesKey = Key('downtimeMinutes');
@@ -48,95 +49,80 @@ class _OeeFormState extends State<OeeForm> {
   @override
   Widget build(BuildContext context) {
     final model = _evaluate();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Calculador OEE'),
-        actions: [
-          if (widget.onOpenMap != null)
-            TextButton(
-              onPressed: widget.onOpenMap,
-              child: const Text('Mapa ISA-95'),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.onOpenData != null) ...[
-                    OutlinedButton(
-                      style: const ButtonStyle(
-                        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
-                      ),
-                      onPressed: widget.onOpenData,
-                      child: const Text('Dades locals'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (widget.onOpenEngine != null) ...[
-                    OutlinedButton(
-                      style: const ButtonStyle(
-                        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
-                      ),
-                      onPressed: widget.onOpenEngine,
-                      child: const Text('Càlcul amb unitats'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  _NumberField(
-                    fieldKey: plannedMinutesKey,
-                    controller: _planned,
-                    label: 'Temps planificat',
-                    unit: 'min',
-                    hasError: model.fieldHasError(_FieldId.planned),
-                    onChanged: _changed,
-                  ),
-                  const SizedBox(height: 12),
-                  _NumberField(
-                    fieldKey: downtimeMinutesKey,
-                    controller: _downtime,
-                    label: 'Temps de parades',
-                    unit: 'min',
-                    hasError: model.fieldHasError(_FieldId.downtime),
-                    onChanged: _changed,
-                  ),
-                  const SizedBox(height: 12),
-                  _NumberField(
-                    fieldKey: idealCycleSecondsKey,
-                    controller: _cycle,
-                    label: 'Temps de cicle ideal',
-                    unit: 's/unitat',
-                    hasError: model.fieldHasError(_FieldId.cycle),
-                    onChanged: _changed,
-                  ),
-                  const SizedBox(height: 12),
-                  _NumberField(
-                    fieldKey: totalUnitsKey,
-                    controller: _total,
-                    label: 'Unitats totals',
-                    unit: 'unitats',
-                    hasError: model.fieldHasError(_FieldId.total),
-                    onChanged: _changed,
-                  ),
-                  const SizedBox(height: 12),
-                  _NumberField(
-                    fieldKey: goodUnitsKey,
-                    controller: _good,
-                    label: 'Unitats bones',
-                    unit: 'unitats',
-                    hasError: model.fieldHasError(_FieldId.good),
-                    onChanged: _changed,
-                  ),
-                  const SizedBox(height: 16),
-                  _ResultPanel(model: model),
-                ],
-              ),
+    final actions = <Widget>[
+      if (widget.onOpenEngine != null)
+        workspaceBarButton(
+          label: 'Càlcul amb unitats',
+          onPressed: widget.onOpenEngine,
+        ),
+      if (widget.onOpenMap != null)
+        workspaceBarButton(label: 'Mapa ISA-95', onPressed: widget.onOpenMap),
+      if (widget.onOpenData != null)
+        workspaceBarButton(label: 'Dades locals', onPressed: widget.onOpenData),
+    ];
+    return WorkspaceShell(
+      current: WorkspaceSection.calculator,
+      onOpenEngine: widget.onOpenEngine,
+      onOpenMap: widget.onOpenMap,
+      onOpenData: widget.onOpenData,
+      header: const WorkspaceHeader(title: 'Calculador OEE'),
+      bottom: actions.isEmpty ? null : WorkspaceBottomBar(children: actions),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _NumberField(
+                  fieldKey: plannedMinutesKey,
+                  controller: _planned,
+                  label: 'Temps planificat',
+                  unit: 'min',
+                  hasError: model.fieldHasError(_FieldId.planned),
+                  onChanged: _changed,
+                ),
+                const SizedBox(height: 12),
+                _NumberField(
+                  fieldKey: downtimeMinutesKey,
+                  controller: _downtime,
+                  label: 'Temps de parades',
+                  unit: 'min',
+                  hasError: model.fieldHasError(_FieldId.downtime),
+                  onChanged: _changed,
+                ),
+                const SizedBox(height: 12),
+                _NumberField(
+                  fieldKey: idealCycleSecondsKey,
+                  controller: _cycle,
+                  label: 'Temps de cicle ideal',
+                  unit: 's/unitat',
+                  hasError: model.fieldHasError(_FieldId.cycle),
+                  onChanged: _changed,
+                ),
+                const SizedBox(height: 12),
+                _NumberField(
+                  fieldKey: totalUnitsKey,
+                  controller: _total,
+                  label: 'Unitats totals',
+                  unit: 'unitats',
+                  hasError: model.fieldHasError(_FieldId.total),
+                  onChanged: _changed,
+                ),
+                const SizedBox(height: 12),
+                _NumberField(
+                  fieldKey: goodUnitsKey,
+                  controller: _good,
+                  label: 'Unitats bones',
+                  unit: 'unitats',
+                  hasError: model.fieldHasError(_FieldId.good),
+                  onChanged: _changed,
+                ),
+                const SizedBox(height: 16),
+                _ResultPanel(model: model),
+              ],
             ),
           ),
         ),
