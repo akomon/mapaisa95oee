@@ -137,3 +137,25 @@ Extretes de [spec.md](spec.md), seccions 4, 9 i 11, i detallades a [qa.md](qa.md
 - [x] Recórrer AC-01…AC-21 i confirmar que totes tenen prova o evidència; actualitzar la taula de traçabilitat.
 - [x] Marcar a `tasks.md` les caselles de C, D, E i QA.
 - [x] PR de QA final enllaçada a aquesta carpeta: [#12](https://github.com/akomon/mapaisa95oee/pull/12).
+
+# Tasques: aparença compartida
+
+Extretes de la petició de producte posterior a R6 i detallades a [appearance.md](appearance.md). No reobren AC-01…AC-21.
+
+## T25 - Closca comuna
+
+- [x] `workspace_shell.dart` amb barra lateral, capçalera i barra inferior compartides.
+- [x] Barra lateral a les quatre pantalles, amb 76 px i 64 px per sota de 600 px.
+- [x] Entrades Calculador, Càlcul, Mapa i Dades, amb estat actiu i objectius de 48 dp.
+- [x] Accions pròpies de cada pantalla a la barra inferior del mapa, també al mapa antic.
+
+## T26 - Tema i diàlegs
+
+- [x] `MaterialApp.theme` amb `workspaceTheme()`.
+- [x] Capçaleres, diàlegs, snackbars, targetes, pestanyes i menús amb la paleta del mapa.
+
+## T27 - Verificació
+
+- [x] `test/workspace_shell_test.dart` cobreix les quatre entrades, la barra inferior i 360 px.
+- [x] `flutter analyze`, `flutter test` i `flutter build web`.
+- [x] Chrome real a 1280 × 800 i a 360 px amb evidència a `appearance/`.

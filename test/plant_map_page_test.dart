@@ -95,6 +95,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(plantMapImportKey));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(plantMapImportKey));
     await tester.pumpAndSettle();
 

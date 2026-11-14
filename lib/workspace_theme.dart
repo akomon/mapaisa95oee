@@ -14,6 +14,8 @@ const Color otBand = Color(0xFFE7F0EA);
 const Color undefinedBand = Color(0xFFEEF0F2);
 const Color citedBand = Color(0xFFF7F7F8);
 const Color accent = Color(0xFF3D6F8F);
+const Color railActive = Color(0xFF2A333C);
+const Color bottomBarSurface = Color(0xFFE6EBEF);
 
 const ButtonStyle workspaceControlStyle = ButtonStyle(
   minimumSize: WidgetStatePropertyAll(Size(48, 48)),
@@ -40,6 +42,55 @@ ThemeData workspaceTheme() {
     focusColor: anthracite,
     hoverColor: const Color(0x143D6F8F),
     textTheme: base.textTheme.apply(bodyColor: ink, displayColor: ink),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: anthracite,
+      foregroundColor: panel,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+    ),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+        side: BorderSide(color: steelLine),
+      ),
+      titleTextStyle: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: ink,
+      ),
+      contentTextStyle: TextStyle(color: ink),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      backgroundColor: anthracite,
+      contentTextStyle: TextStyle(color: panel),
+      actionTextColor: Color(0xFFB7D2E2),
+    ),
+    cardTheme: const CardThemeData(
+      color: panel,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(6)),
+        side: BorderSide(color: steelLine),
+      ),
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: ink,
+      unselectedLabelColor: steel,
+      indicatorColor: accent,
+      dividerColor: steelLine,
+    ),
+    popupMenuTheme: const PopupMenuThemeData(
+      color: panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(6)),
+        side: BorderSide(color: steelLine),
+      ),
+    ),
     inputDecorationTheme: const InputDecorationTheme(
       isDense: true,
       constraints: BoxConstraints(minHeight: 48),
