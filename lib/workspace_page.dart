@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'flow_suggestions.dart';
+import 'map_viewport.dart';
 import 'plant_io.dart' as plant_io;
 import 'workspace_codec.dart';
 import 'workspace_model.dart';
@@ -1351,14 +1353,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
         PopupMenuItem(value: _Draft.system, child: Text('Sistema')),
         PopupMenuItem(value: _Draft.flow, child: Text('Flux')),
       ],
-      child: const SizedBox(
+      child: Container(
         height: 48,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [Icon(Icons.add), SizedBox(width: 6), Text('Afegeix')],
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: panel,
+          borderRadius: BorderRadius.circular(controlRadius),
+          border: Border.all(color: steelLine),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 20),
+            SizedBox(width: 6),
+            Text('Afegeix'),
+          ],
         ),
       ),
     );
@@ -1525,12 +1534,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
             child: Focus(
               autofocus: false,
               onKeyEvent: _mapKeys,
-              child: InteractiveViewer(
-                transformationController: _transform,
-                constrained: false,
+              child: MapViewport(
+                controller: _transform,
+                contentSize: geometry.size,
+                onScroll: _onMapScroll,
                 minScale: 0.35,
                 maxScale: 2.5,
-                boundaryMargin: const EdgeInsets.all(120),
                 child: SizedBox(
                   width: geometry.size.width,
                   height: geometry.size.height,
@@ -1615,6 +1624,23 @@ class _WorkspacePageState extends State<WorkspacePage> {
         ],
       ),
     );
+  }
+
+  /// La roda del ratolí desplaça el mapa. El zoom queda per als botons, el
+  /// teclat i el gest de pessigar.
+  void _onMapScroll(PointerScrollEvent event) {
+    final delta = event.scrollDelta;
+    if (delta == Offset.zero) {
+      return;
+    }
+    final shift = HardwareKeyboard.instance.isShiftPressed;
+    final horizontal = shift || delta.dx.abs() > delta.dy.abs();
+    final amount = delta.dx != 0 ? delta.dx : delta.dy;
+    if (horizontal) {
+      _pan(-amount, 0);
+    } else {
+      _pan(0, -amount);
+    }
   }
 
   double _bandTop(_Geometry geometry, String band) {
@@ -2500,67 +2526,76 @@ class _WorkspacePageState extends State<WorkspacePage> {
       children: [
         WorkspaceBottomBar(
           children: [
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceZoomInKey,
               style: workspaceControlStyle,
               onPressed: () => _zoom(1.15),
-              child: const Text('Apropa'),
+              icon: const Icon(Icons.zoom_in),
+              label: const Text('Apropa'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceZoomOutKey,
               style: workspaceControlStyle,
               onPressed: () => _zoom(1 / 1.15),
-              child: const Text('Allunya'),
+              icon: const Icon(Icons.zoom_out),
+              label: const Text('Allunya'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceFitKey,
               style: workspaceControlStyle,
               onPressed: _fit,
-              child: const Text('Enquadra'),
+              icon: const Icon(Icons.fit_screen),
+              label: const Text('Enquadra'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               style: workspaceControlStyle,
               onPressed: () => _pan(48, 0),
-              child: const Text('Esquerra'),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Esquerra'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               style: workspaceControlStyle,
               onPressed: () => _pan(-48, 0),
-              child: const Text('Dreta'),
+              icon: const Icon(Icons.arrow_forward),
+              label: const Text('Dreta'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               style: workspaceControlStyle,
               onPressed: () => _pan(0, 48),
-              child: const Text('Amunt'),
+              icon: const Icon(Icons.arrow_upward),
+              label: const Text('Amunt'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               style: workspaceControlStyle,
               onPressed: () => _pan(0, -48),
-              child: const Text('Avall'),
+              icon: const Icon(Icons.arrow_downward),
+              label: const Text('Avall'),
             ),
             Text(
               status,
               key: workspaceSaveStatusKey,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceNewSchemaKey,
               style: workspaceControlStyle,
               onPressed: widget.repository.status == SaveStatus.saving
                   ? null
                   : _createSchema,
-              child: const Text('Nou esquema'),
+              icon: const Icon(Icons.add_box_outlined),
+              label: const Text('Nou esquema'),
             ),
             if (_schemaId != null)
-              OutlinedButton(
+              OutlinedButton.icon(
                 key: workspaceCopySchemaKey,
                 style: workspaceControlStyle,
                 onPressed: widget.repository.status == SaveStatus.saving
                     ? null
                     : _copySchema,
-                child: const Text('Copia l\'esquema'),
+                icon: const Icon(Icons.content_copy),
+                label: const Text('Copia l\'esquema'),
               ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceSnapshotKey,
               style: workspaceControlStyle,
               onPressed:
@@ -2568,15 +2603,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
                       _schemaId == null
                   ? null
                   : _createSnapshot,
-              child: const Text('Nova instantània'),
+              icon: const Icon(Icons.bookmark_add_outlined),
+              label: const Text('Nova instantània'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceVersionsKey,
               style: workspaceControlStyle,
               onPressed: _openVersions,
-              child: Text('Versions: ${_workspace.versions.length}'),
+              icon: const Icon(Icons.history),
+              label: Text('Versions: ${_workspace.versions.length}'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceHistoryKey,
               style: workspaceControlStyle,
               onPressed: () => setState(() {
@@ -2585,23 +2622,26 @@ class _WorkspacePageState extends State<WorkspacePage> {
                 _inspectorOpen = true;
                 _oeeEpoch += 1;
               }),
-              child: const Text('Històric OEE'),
+              icon: const Icon(Icons.timeline),
+              label: const Text('Històric OEE'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceExportKey,
               style: workspaceControlStyle,
               onPressed: widget.repository.status == SaveStatus.saving
                   ? null
                   : _exportBackup,
-              child: const Text('Exporta còpia'),
+              icon: const Icon(Icons.file_download_outlined),
+              label: const Text('Exporta còpia'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               key: workspaceImportKey,
               style: workspaceControlStyle,
               onPressed: widget.repository.status == SaveStatus.saving
                   ? null
                   : _importBackup,
-              child: const Text('Importa còpia'),
+              icon: const Icon(Icons.file_upload_outlined),
+              label: const Text('Importa còpia'),
             ),
           ],
         ),

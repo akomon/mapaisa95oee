@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mapaisa95oee/map_viewport.dart';
 import 'package:mapaisa95oee/plant_store.dart';
 import 'package:mapaisa95oee/workspace_codec.dart';
 import 'package:mapaisa95oee/workspace_database.dart';
@@ -165,10 +167,8 @@ void main() {
     final repo = await open(example: true);
     await pumpPage(tester, repo);
 
-    final viewer = tester.widget<InteractiveViewer>(
-      find.byType(InteractiveViewer),
-    );
-    final transform = viewer.transformationController!;
+    final viewer = tester.widget<MapViewport>(find.byType(MapViewport));
+    final transform = viewer.controller;
     double scale() => transform.value.storage[0];
     double panX() => transform.value.storage[12];
     final fitted = scale();
@@ -204,6 +204,38 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
     await tester.pump();
     expect(scale(), closeTo(fitted, 0.000001));
+  });
+
+  testWidgets('la roda desplaça el mapa i no canvia el zoom', (tester) async {
+    final repo = await open(example: true);
+    await pumpPage(tester, repo);
+
+    final viewer = tester.widget<MapViewport>(find.byType(MapViewport));
+    final transform = viewer.controller;
+    double scale() => transform.value.storage[0];
+    double panX() => transform.value.storage[12];
+    double panY() => transform.value.storage[13];
+    final fitted = scale();
+    final startY = panY();
+    final startX = panX();
+
+    final wheel = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(
+      wheel.hover(tester.getCenter(find.byKey(const Key('map-n16')))),
+    );
+    await tester.sendEventToBinding(wheel.scroll(const Offset(0, 120)));
+    await tester.pump();
+    expect(scale(), closeTo(fitted, 0.000001));
+    expect(panY(), closeTo(startY - 120, 0.000001));
+    expect(panX(), closeTo(startX, 0.000001));
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendEventToBinding(wheel.scroll(const Offset(0, 80)));
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(scale(), closeTo(fitted, 0.000001));
+    expect(panX(), closeTo(startX - 80, 0.000001));
+    expect(panY(), closeTo(startY - 120, 0.000001));
   });
 
   testWidgets('canviar la selecció conserva planta i esquema', (tester) async {

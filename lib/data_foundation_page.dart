@@ -160,10 +160,15 @@ class _DataFoundationPageState extends State<DataFoundationPage> {
       if (widget.onOpenOee != null)
         workspaceBarButton(
           label: 'Calculador OEE',
+          icon: Icons.calculate_outlined,
           onPressed: widget.onOpenOee,
         ),
       if (widget.onOpenMap != null)
-        workspaceBarButton(label: 'Mapa ISA-95', onPressed: widget.onOpenMap),
+        workspaceBarButton(
+          label: 'Mapa ISA-95',
+          icon: Icons.account_tree,
+          onPressed: widget.onOpenMap,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.data,

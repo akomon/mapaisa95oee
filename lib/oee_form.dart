@@ -53,12 +53,21 @@ class _OeeFormState extends State<OeeForm> {
       if (widget.onOpenEngine != null)
         workspaceBarButton(
           label: 'Càlcul amb unitats',
+          icon: Icons.speed,
           onPressed: widget.onOpenEngine,
         ),
       if (widget.onOpenMap != null)
-        workspaceBarButton(label: 'Mapa ISA-95', onPressed: widget.onOpenMap),
+        workspaceBarButton(
+          label: 'Mapa ISA-95',
+          icon: Icons.account_tree,
+          onPressed: widget.onOpenMap,
+        ),
       if (widget.onOpenData != null)
-        workspaceBarButton(label: 'Dades locals', onPressed: widget.onOpenData),
+        workspaceBarButton(
+          label: 'Dades locals',
+          icon: Icons.folder_outlined,
+          onPressed: widget.onOpenData,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.calculator,

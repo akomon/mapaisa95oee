@@ -15,6 +15,30 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
+  test('els controls són quadrats i del color del mapa', () {
+    final theme = workspaceTheme();
+    final shape = theme.outlinedButtonTheme.style!.shape!.resolve(
+      <WidgetState>{},
+    ) as RoundedRectangleBorder;
+    expect((shape.borderRadius as BorderRadius).topLeft.x, controlRadius);
+    expect(
+      theme.outlinedButtonTheme.style!.backgroundColor!.resolve(
+        <WidgetState>{},
+      ),
+      panel,
+    );
+    expect(
+      theme.outlinedButtonTheme.style!.foregroundColor!.resolve(
+        <WidgetState>{},
+      ),
+      ink,
+    );
+    final iconShape = theme.iconButtonTheme.style!.shape!.resolve(
+      <WidgetState>{},
+    ) as RoundedRectangleBorder;
+    expect((iconShape.borderRadius as BorderRadius).topLeft.x, controlRadius);
+  });
+
   testWidgets(
     'la barra lateral i la barra inferior acompanyen totes les vistes',
     (tester) async {

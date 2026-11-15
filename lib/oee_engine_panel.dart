@@ -39,12 +39,21 @@ class OeeEnginePage extends StatelessWidget {
       if (onOpenCalculator != null)
         workspaceBarButton(
           label: 'Calculador US-1',
+          icon: Icons.calculate_outlined,
           onPressed: onOpenCalculator,
         ),
       if (onOpenMap != null)
-        workspaceBarButton(label: 'Mapa ISA-95', onPressed: onOpenMap),
+        workspaceBarButton(
+          label: 'Mapa ISA-95',
+          icon: Icons.account_tree,
+          onPressed: onOpenMap,
+        ),
       if (onOpenData != null)
-        workspaceBarButton(label: 'Dades locals', onPressed: onOpenData),
+        workspaceBarButton(
+          label: 'Dades locals',
+          icon: Icons.folder_outlined,
+          onPressed: onOpenData,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.engine,

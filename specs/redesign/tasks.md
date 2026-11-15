@@ -153,9 +153,18 @@ Extretes de la petició de producte posterior a R6 i detallades a [appearance.md
 
 - [x] `MaterialApp.theme` amb `workspaceTheme()`.
 - [x] Capçaleres, diàlegs, snackbars, targetes, pestanyes i menús amb la paleta del mapa.
+- [x] `workspaceControlStyle` quadrat (radi 6, fons `panel`, vora `steelLine`, text `ink`, 48 dp) heretat per `OutlinedButton`, `TextButton`, `FilledButton` i `IconButton`.
+- [x] Cap botó rodó ni píndola: el desplega/replega i el menú de tres punts del mapa antic passen a blanc amb vora, i les files de l'arbre deixen el gris `surfaceContainerHighest`.
+- [x] Totes les accions de les barres porten icona i text.
 
-## T27 - Verificació
+## T27 - Roda del ratolí i zoom
 
-- [x] `test/workspace_shell_test.dart` cobreix les quatre entrades, la barra inferior i 360 px.
-- [x] `flutter analyze`, `flutter test` i `flutter build web`.
-- [x] Chrome real a 1280 × 800 i a 360 px amb evidència a `appearance/`.
+- [x] `lib/map_viewport.dart` substitueix `InteractiveViewer`: la roda desplaça el mapa i `Maj` + roda el desplaça en horitzontal.
+- [x] El zoom queda als botons Apropa/Allunya, al teclat (`+`, `-`, `F`) i al gest de pessigar.
+- [x] Prova de la roda amb deltes exactes i escala intacta a `test/workspace_page_test.dart`.
+
+## T28 - Verificació
+
+- [x] `test/workspace_shell_test.dart` cobreix les quatre entrades, la barra inferior, 360 px i la forma dels controls.
+- [x] `flutter analyze`, `flutter test` (122 tests) i `flutter build web`.
+- [x] Chrome real a 1280 × 800 i a 360 px amb evidència a `appearance/`, inclòs el desplaçament amb roda (`34b`/`34c`).

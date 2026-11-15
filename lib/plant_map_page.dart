@@ -262,37 +262,46 @@ class _PlantMapPageState extends State<PlantMapPage>
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
-      OutlinedButton(
+      OutlinedButton.icon(
         key: plantMapAddEnterpriseKey,
         style: workspaceControlStyle,
         onPressed: _addEnterprise,
-        child: const Text('Afegeix empresa'),
+        icon: const Icon(Icons.add_business_outlined),
+        label: const Text('Afegeix empresa'),
       ),
-      OutlinedButton(
+      OutlinedButton.icon(
         key: plantMapLoadExampleKey,
         style: workspaceControlStyle,
         onPressed: _loadExample,
-        child: const Text('Carrega exemple'),
+        icon: const Icon(Icons.factory_outlined),
+        label: const Text('Carrega exemple'),
       ),
-      OutlinedButton(
+      OutlinedButton.icon(
         key: plantMapExportKey,
         style: workspaceControlStyle,
         onPressed: _export,
-        child: const Text('Exporta JSON'),
+        icon: const Icon(Icons.file_download_outlined),
+        label: const Text('Exporta JSON'),
       ),
-      OutlinedButton(
+      OutlinedButton.icon(
         key: plantMapImportKey,
         style: workspaceControlStyle,
         onPressed: _import,
-        child: const Text('Importa JSON'),
+        icon: const Icon(Icons.file_upload_outlined),
+        label: const Text('Importa JSON'),
       ),
       if (widget.onOpenOee != null)
         workspaceBarButton(
           label: 'Calculador OEE',
+          icon: Icons.calculate_outlined,
           onPressed: widget.onOpenOee,
         ),
       if (widget.onOpenData != null)
-        workspaceBarButton(label: 'Dades locals', onPressed: widget.onOpenData),
+        workspaceBarButton(
+          label: 'Dades locals',
+          icon: Icons.folder_outlined,
+          onPressed: widget.onOpenData,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.map,
@@ -590,8 +599,11 @@ class _TreeRow extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(left: depth * 16.0, top: 4, bottom: 4),
       child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: panel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(controlRadius),
+          side: const BorderSide(color: steelLine),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
