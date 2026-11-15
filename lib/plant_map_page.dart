@@ -23,7 +23,6 @@ class PlantMapPage extends StatefulWidget {
   const PlantMapPage({
     super.key,
     required this.store,
-    this.onOpenOee,
     this.onOpenEngine,
     this.onOpenData,
     this.exportJson,
@@ -31,7 +30,6 @@ class PlantMapPage extends StatefulWidget {
   });
 
   final PlantStore store;
-  final VoidCallback? onOpenOee;
   final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenData;
   final PlantJsonExporter? exportJson;
@@ -290,12 +288,6 @@ class _PlantMapPageState extends State<PlantMapPage>
         icon: const Icon(Icons.file_upload_outlined),
         label: const Text('Importa JSON'),
       ),
-      if (widget.onOpenOee != null)
-        workspaceBarButton(
-          label: 'Calculador OEE',
-          icon: Icons.calculate_outlined,
-          onPressed: widget.onOpenOee,
-        ),
       if (widget.onOpenData != null)
         workspaceBarButton(
           label: 'Dades locals',
@@ -305,7 +297,6 @@ class _PlantMapPageState extends State<PlantMapPage>
     ];
     return WorkspaceShell(
       current: WorkspaceSection.map,
-      onOpenCalculator: widget.onOpenOee,
       onOpenEngine: widget.onOpenEngine,
       onOpenData: widget.onOpenData,
       header: WorkspaceHeader(

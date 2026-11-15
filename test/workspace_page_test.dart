@@ -45,16 +45,11 @@ void main() {
     WidgetTester tester,
     WorkspaceRepository repo, {
     Size size = const Size(1280, 800),
-    VoidCallback? onOpenOee,
   }) async {
     await surface(tester, size);
     await tester.pumpWidget(
       MaterialApp(
-        home: WorkspacePage(
-          repository: repo,
-          onOpenOee: onOpenOee ?? () {},
-          onOpenData: () {},
-        ),
+        home: WorkspacePage(repository: repo, onOpenData: () {}),
       ),
     );
     await tester.pumpAndSettle();

@@ -53,7 +53,6 @@ class WorkspacePage extends StatefulWidget {
   const WorkspacePage({
     super.key,
     required this.repository,
-    this.onOpenOee,
     this.onOpenEngine,
     this.onOpenData,
     this.exportJson,
@@ -61,7 +60,6 @@ class WorkspacePage extends StatefulWidget {
   });
 
   final WorkspaceRepository repository;
-  final VoidCallback? onOpenOee;
   final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenData;
   final Future<void> Function(String filename, String json)? exportJson;
@@ -1239,7 +1237,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final wide = MediaQuery.sizeOf(context).width >= 1100;
     return WorkspaceShell(
       current: WorkspaceSection.map,
-      onOpenCalculator: widget.onOpenOee,
       onOpenEngine: widget.onOpenEngine,
       onOpenData: widget.onOpenData,
       header: _header(wide),
@@ -2113,22 +2110,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
     if (asset?.kind == AssetKind.line) {
-      children.add(const SizedBox(height: 8));
-      children.add(
-        const Text(
-          'El calculador US-1 continua disponible. El quadre de sota és el càlcul de la secció 5.',
-        ),
-      );
-      if (widget.onOpenOee != null) {
-        children.add(
-          OutlinedButton.icon(
-            style: workspaceControlStyle,
-            onPressed: widget.onOpenOee,
-            icon: const Icon(Icons.calculate_outlined),
-            label: const Text('Obre el calculador'),
-          ),
-        );
-      }
       children.add(const SizedBox(height: 8));
       children.add(
         OeeLineWorkbench(

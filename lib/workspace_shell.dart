@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'workspace_theme.dart';
 
 const Key workspaceRailKey = Key('workspaceRail');
-const Key workspaceRailCalculatorKey = Key('workspaceRailCalculator');
 const Key workspaceRailEngineKey = Key('workspaceRailEngine');
 const Key workspaceRailMapKey = Key('workspaceRailMap');
 const Key workspaceRailDataKey = Key('workspaceRailData');
@@ -12,7 +11,7 @@ const Key workspaceBottomBarKey = Key('workspaceBottomBar');
 const double workspaceRailWidth = 76;
 const double workspaceRailWidthCompact = 64;
 
-enum WorkspaceSection { calculator, engine, map, data }
+enum WorkspaceSection { engine, map, data }
 
 /// Closca comuna de l'aplicació: barra lateral antracita, capçalera de panell
 /// i barra inferior amb l'estètica del mapa.
@@ -23,7 +22,6 @@ class WorkspaceShell extends StatelessWidget {
     required this.header,
     required this.child,
     this.bottom,
-    this.onOpenCalculator,
     this.onOpenEngine,
     this.onOpenMap,
     this.onOpenData,
@@ -33,7 +31,6 @@ class WorkspaceShell extends StatelessWidget {
   final Widget header;
   final Widget child;
   final Widget? bottom;
-  final VoidCallback? onOpenCalculator;
   final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenMap;
   final VoidCallback? onOpenData;
@@ -49,7 +46,6 @@ class WorkspaceShell extends StatelessWidget {
           children: [
             WorkspaceRail(
               current: current,
-              onOpenCalculator: onOpenCalculator,
               onOpenEngine: onOpenEngine,
               onOpenMap: onOpenMap,
               onOpenData: onOpenData,
@@ -78,14 +74,12 @@ class WorkspaceRail extends StatelessWidget {
   const WorkspaceRail({
     super.key,
     required this.current,
-    this.onOpenCalculator,
     this.onOpenEngine,
     this.onOpenMap,
     this.onOpenData,
   });
 
   final WorkspaceSection current;
-  final VoidCallback? onOpenCalculator;
   final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenMap;
   final VoidCallback? onOpenData;
@@ -100,14 +94,6 @@ class WorkspaceRail extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Column(
         children: [
-          _railButton(
-            key: workspaceRailCalculatorKey,
-            icon: Icons.calculate_outlined,
-            label: 'Calculador',
-            section: WorkspaceSection.calculator,
-            compact: compact,
-            onPressed: onOpenCalculator,
-          ),
           _railButton(
             key: workspaceRailEngineKey,
             icon: Icons.speed,
@@ -147,6 +133,7 @@ class WorkspaceRail extends StatelessWidget {
   }) {
     final active = section == current;
     final enabled = active || onPressed != null;
+    final color = enabled ? panel : const Color(0x80FFFFFF);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: SizedBox(
@@ -154,7 +141,8 @@ class WorkspaceRail extends StatelessWidget {
         child: TextButton(
           key: key,
           style: TextButton.styleFrom(
-            foregroundColor: enabled ? panel : const Color(0x80FFFFFF),
+            foregroundColor: color,
+            iconColor: color,
             backgroundColor: active ? railActive : Colors.transparent,
             minimumSize: const Size(48, 48),
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),

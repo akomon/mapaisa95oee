@@ -46,7 +46,6 @@ void main() {
 
       expect(find.byKey(workspaceRailKey), findsOneWidget);
       for (final key in [
-        workspaceRailCalculatorKey,
         workspaceRailEngineKey,
         workspaceRailMapKey,
         workspaceRailDataKey,
@@ -57,6 +56,7 @@ void main() {
           greaterThanOrEqualTo(48),
         );
       }
+      expect(find.text('Calculador'), findsNothing);
 
       final bottom = find.byKey(workspaceBottomBarKey);
       expect(bottom, findsOneWidget);
@@ -71,9 +71,9 @@ void main() {
       expect(find.text('Mapa ISA-95'), findsOneWidget);
       expect(find.byKey(workspaceRailKey), findsOneWidget);
 
-      await tester.tap(find.byKey(workspaceRailCalculatorKey));
+      await tester.tap(find.byKey(workspaceRailEngineKey));
       await tester.pumpAndSettle();
-      expect(find.text('Calculador OEE'), findsOneWidget);
+      expect(find.text('Càlcul OEE'), findsOneWidget);
       expect(find.byKey(workspaceRailKey), findsOneWidget);
     },
   );

@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data_foundation_page.dart';
 import 'oee_engine_panel.dart';
-import 'oee_form.dart';
 import 'plant_map_page.dart';
 import 'plant_store.dart';
 import 'workspace_idb.dart';
@@ -39,16 +38,15 @@ class OeeApp extends StatefulWidget {
   State<OeeApp> createState() => _OeeAppState();
 }
 
-enum _Screen { oee, engine, map, data }
+enum _Screen { engine, map, data }
 
 class _OeeAppState extends State<OeeApp> {
-  _Screen _screen = _Screen.oee;
+  _Screen _screen = _Screen.engine;
 
   @override
   Widget build(BuildContext context) {
     final workspace = widget.workspace;
     final title = switch (_screen) {
-      _Screen.oee => 'Calculador OEE',
       _Screen.engine => 'Càlcul OEE',
       _Screen.map => 'Mapa ISA-95',
       _Screen.data => 'Dades locals',
@@ -59,35 +57,24 @@ class _OeeAppState extends State<OeeApp> {
       home: switch (_screen) {
         _Screen.map when workspace != null => WorkspacePage(
           repository: workspace,
-          onOpenOee: () => setState(() => _screen = _Screen.oee),
           onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenData: () => setState(() => _screen = _Screen.data),
         ),
         _Screen.map => PlantMapPage(
           store: widget.store,
-          onOpenOee: () => setState(() => _screen = _Screen.oee),
           onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenData: null,
         ),
         _Screen.data when workspace != null => DataFoundationPage(
           repository: workspace,
-          onOpenOee: () => setState(() => _screen = _Screen.oee),
           onOpenEngine: () => setState(() => _screen = _Screen.engine),
           onOpenMap: () => setState(() => _screen = _Screen.map),
         ),
-        _Screen.engine => OeeEnginePage(
-          onOpenCalculator: () => setState(() => _screen = _Screen.oee),
+        _ => OeeEnginePage(
           onOpenMap: () => setState(() => _screen = _Screen.map),
           onOpenData: workspace == null
               ? null
               : () => setState(() => _screen = _Screen.data),
-        ),
-        _ => OeeForm(
-          onOpenMap: () => setState(() => _screen = _Screen.map),
-          onOpenData: workspace == null
-              ? null
-              : () => setState(() => _screen = _Screen.data),
-          onOpenEngine: () => setState(() => _screen = _Screen.engine),
         ),
       },
     );

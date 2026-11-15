@@ -146,7 +146,7 @@ Extretes de la petició de producte posterior a R6 i detallades a [appearance.md
 
 - [x] `workspace_shell.dart` amb barra lateral, capçalera i barra inferior compartides.
 - [x] Barra lateral a les quatre pantalles, amb 76 px i 64 px per sota de 600 px.
-- [x] Entrades Calculador, Càlcul, Mapa i Dades, amb estat actiu i objectius de 48 dp.
+- [x] Entrades Càlcul, Mapa i Dades, amb estat actiu i objectius de 48 dp.
 - [x] Accions pròpies de cada pantalla a la barra inferior del mapa, també al mapa antic.
 
 ## T26 - Tema i diàlegs
@@ -165,6 +165,14 @@ Extretes de la petició de producte posterior a R6 i detallades a [appearance.md
 
 ## T28 - Verificació
 
-- [x] `test/workspace_shell_test.dart` cobreix les quatre entrades, la barra inferior, 360 px i la forma dels controls.
-- [x] `flutter analyze`, `flutter test` (122 tests) i `flutter build web`.
+- [x] `test/workspace_shell_test.dart` cobreix les tres entrades, la barra inferior, 360 px i la forma dels controls.
+- [x] `flutter analyze`, `flutter test` (117 tests) i `flutter build web`.
 - [x] Chrome real a 1280 × 800 i a 360 px amb evidència a `appearance/`, inclòs el desplaçament amb roda (`34b`/`34c`).
+
+## T29 - Unificació del càlcul
+
+- [x] Retirar el Calculador OEE (`lib/oee_form.dart`, la pantalla i la seva prova) i l'entrada `Calculador` de la barra.
+- [x] Treure els enllaços `Calculador US-1`, `Calculador OEE` i `Obre el calculador` de les barres, l'inspector i la navegació.
+- [x] Conservar el càlcul a `Càlcul OEE` i al quadre de la línia del mapa, amb l'historial OEE intacte.
+- [x] Icones de la barra lateral en blanc sobre l'antracita, també a les entrades inactives.
+- [x] Metadades web (`title`, manifest i descripció) alineades amb `Càlcul OEE`.
