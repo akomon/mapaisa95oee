@@ -15,6 +15,30 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
+  test('els controls són quadrats i del color del mapa', () {
+    final theme = workspaceTheme();
+    final shape = theme.outlinedButtonTheme.style!.shape!.resolve(
+      <WidgetState>{},
+    ) as RoundedRectangleBorder;
+    expect((shape.borderRadius as BorderRadius).topLeft.x, controlRadius);
+    expect(
+      theme.outlinedButtonTheme.style!.backgroundColor!.resolve(
+        <WidgetState>{},
+      ),
+      panel,
+    );
+    expect(
+      theme.outlinedButtonTheme.style!.foregroundColor!.resolve(
+        <WidgetState>{},
+      ),
+      ink,
+    );
+    final iconShape = theme.iconButtonTheme.style!.shape!.resolve(
+      <WidgetState>{},
+    ) as RoundedRectangleBorder;
+    expect((iconShape.borderRadius as BorderRadius).topLeft.x, controlRadius);
+  });
+
   testWidgets(
     'la barra lateral i la barra inferior acompanyen totes les vistes',
     (tester) async {
@@ -22,7 +46,6 @@ void main() {
 
       expect(find.byKey(workspaceRailKey), findsOneWidget);
       for (final key in [
-        workspaceRailCalculatorKey,
         workspaceRailEngineKey,
         workspaceRailMapKey,
         workspaceRailDataKey,
@@ -33,6 +56,7 @@ void main() {
           greaterThanOrEqualTo(48),
         );
       }
+      expect(find.text('Calculador'), findsNothing);
 
       final bottom = find.byKey(workspaceBottomBarKey);
       expect(bottom, findsOneWidget);
@@ -47,9 +71,9 @@ void main() {
       expect(find.text('Mapa ISA-95'), findsOneWidget);
       expect(find.byKey(workspaceRailKey), findsOneWidget);
 
-      await tester.tap(find.byKey(workspaceRailCalculatorKey));
+      await tester.tap(find.byKey(workspaceRailEngineKey));
       await tester.pumpAndSettle();
-      expect(find.text('Calculador OEE'), findsOneWidget);
+      expect(find.text('Càlcul OEE'), findsOneWidget);
       expect(find.byKey(workspaceRailKey), findsOneWidget);
     },
   );

@@ -39,11 +39,7 @@ void main() {
     await surface(tester, size);
     await tester.pumpWidget(
       MaterialApp(
-        home: WorkspacePage(
-          repository: repo,
-          onOpenOee: () {},
-          onOpenData: () {},
-        ),
+        home: WorkspacePage(repository: repo, onOpenData: () {}),
       ),
     );
     await tester.pumpAndSettle();

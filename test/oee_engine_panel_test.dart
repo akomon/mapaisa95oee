@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mapaisa95oee/main.dart';
 import 'package:mapaisa95oee/oee_engine.dart';
 import 'package:mapaisa95oee/oee_engine_panel.dart';
-import 'package:mapaisa95oee/oee_form.dart';
-import 'package:mapaisa95oee/plant_store.dart';
 import 'package:mapaisa95oee/workspace_database_memory.dart';
 import 'package:mapaisa95oee/workspace_page.dart';
 import 'package:mapaisa95oee/workspace_repository.dart';
@@ -258,32 +255,6 @@ void main() {
     },
   );
 
-  testWidgets('el calculador US-1 segueix al 79.2 % i obre el motor nou', (
-    tester,
-  ) async {
-    await tester.pumpWidget(OeeApp(store: MemoryPlantStore()));
-    expect(find.text('Càlcul amb unitats'), findsOneWidget);
-    await tester.tap(find.text('Càlcul amb unitats'));
-    await tester.pumpAndSettle();
-    expect(find.text('Càlcul OEE'), findsOneWidget);
-
-    await tester.tap(find.text('Calculador US-1'));
-    await tester.pumpAndSettle();
-    expect(find.text('Calculador OEE'), findsOneWidget);
-
-    Future<void> type(Key key, String value) async {
-      await tester.enterText(find.byKey(key), value);
-      await tester.pump();
-    }
-
-    await type(plannedMinutesKey, '480');
-    await type(downtimeMinutesKey, '60');
-    await type(idealCycleSecondsKey, '60');
-    await type(totalUnitsKey, '400');
-    await type(goodUnitsKey, '380');
-    expect(find.text('OEE: 79.2 %'), findsOneWidget);
-  });
-
   testWidgets('la línia mostra el quadre sense escriure un registre', (
     tester,
   ) async {
@@ -297,11 +268,7 @@ void main() {
     await surface(tester, const Size(1280, 800));
     await tester.pumpWidget(
       MaterialApp(
-        home: WorkspacePage(
-          repository: repo,
-          onOpenOee: () {},
-          onOpenData: () {},
-        ),
+        home: WorkspacePage(repository: repo, onOpenData: () {}),
       ),
     );
     await tester.pumpAndSettle();
@@ -310,10 +277,7 @@ void main() {
     tester.widget<ListTile>(tile).onTap!.call();
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Obre el calculador', skipOffstage: false),
-      findsOneWidget,
-    );
+    expect(find.text('Obre el calculador', skipOffstage: false), findsNothing);
     expect(
       find.text(
         'Línia: Línia iogurt. La velocitat ideal correspon a aquesta línia.',
@@ -339,11 +303,7 @@ void main() {
     await surface(tester, const Size(360, 800));
     await tester.pumpWidget(
       MaterialApp(
-        home: WorkspacePage(
-          repository: repo,
-          onOpenOee: () {},
-          onOpenData: () {},
-        ),
+        home: WorkspacePage(repository: repo, onOpenData: () {}),
       ),
     );
     await tester.pumpAndSettle();

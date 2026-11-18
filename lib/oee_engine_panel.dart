@@ -22,13 +22,11 @@ const Key saveOeeValidatedKey = Key('saveOeeValidated');
 class OeeEnginePage extends StatelessWidget {
   const OeeEnginePage({
     super.key,
-    this.onOpenCalculator,
     this.onOpenMap,
     this.onOpenData,
     this.lineName,
   });
 
-  final VoidCallback? onOpenCalculator;
   final VoidCallback? onOpenMap;
   final VoidCallback? onOpenData;
   final String? lineName;
@@ -36,19 +34,21 @@ class OeeEnginePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
-      if (onOpenCalculator != null)
-        workspaceBarButton(
-          label: 'Calculador US-1',
-          onPressed: onOpenCalculator,
-        ),
       if (onOpenMap != null)
-        workspaceBarButton(label: 'Mapa ISA-95', onPressed: onOpenMap),
+        workspaceBarButton(
+          label: 'Mapa ISA-95',
+          icon: Icons.account_tree,
+          onPressed: onOpenMap,
+        ),
       if (onOpenData != null)
-        workspaceBarButton(label: 'Dades locals', onPressed: onOpenData),
+        workspaceBarButton(
+          label: 'Dades locals',
+          icon: Icons.folder_outlined,
+          onPressed: onOpenData,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.engine,
-      onOpenCalculator: onOpenCalculator,
       onOpenMap: onOpenMap,
       onOpenData: onOpenData,
       header: const WorkspaceHeader(title: 'Càlcul OEE'),

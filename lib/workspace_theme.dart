@@ -17,10 +17,47 @@ const Color accent = Color(0xFF3D6F8F);
 const Color railActive = Color(0xFF2A333C);
 const Color bottomBarSurface = Color(0xFFE6EBEF);
 
-const ButtonStyle workspaceControlStyle = ButtonStyle(
-  minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+const double controlRadius = 6;
+
+/// Estil únic dels controls: rectangle arrodonit, fons blanc, vora fina i
+/// text fosc. Substitueix les píndoles de Material 3 a tota l'aplicació.
+final ButtonStyle workspaceControlStyle = ButtonStyle(
+  minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
   visualDensity: VisualDensity.standard,
   tapTargetSize: MaterialTapTargetSize.padded,
+  shape: const WidgetStatePropertyAll(
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(controlRadius)),
+    ),
+  ),
+  backgroundColor: const WidgetStatePropertyAll(panel),
+  foregroundColor: WidgetStateProperty.resolveWith(
+    (states) =>
+        states.contains(WidgetState.disabled) ? const Color(0x805C6B7A) : ink,
+  ),
+  iconColor: WidgetStateProperty.resolveWith(
+    (states) =>
+        states.contains(WidgetState.disabled) ? const Color(0x805C6B7A) : ink,
+  ),
+  padding: const WidgetStatePropertyAll(
+    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  ),
+  side: WidgetStateProperty.resolveWith((states) {
+    if (states.contains(WidgetState.focused)) {
+      return const BorderSide(color: anthracite, width: 2);
+    }
+    return const BorderSide(color: steelLine);
+  }),
+  overlayColor: WidgetStateProperty.resolveWith((states) {
+    if (states.contains(WidgetState.pressed)) {
+      return const Color(0x243D6F8F);
+    }
+    if (states.contains(WidgetState.hovered) ||
+        states.contains(WidgetState.focused)) {
+      return const Color(0x143D6F8F);
+    }
+    return null;
+  }),
 );
 
 ThemeData workspaceTheme() {
@@ -32,6 +69,7 @@ ThemeData workspaceTheme() {
       primary: accent,
       onPrimary: panel,
       secondary: steel,
+      tertiary: Color(0xFF8A6A2F),
       surface: panel,
       onSurface: ink,
       error: Color(0xFF8C3A3A),
@@ -99,20 +137,10 @@ ThemeData workspaceTheme() {
         borderSide: BorderSide(color: anthracite, width: 2),
       ),
     ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: workspaceControlStyle.copyWith(
-        side: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.focused)) {
-            return const BorderSide(color: anthracite, width: 2);
-          }
-          return const BorderSide(color: steel);
-        }),
-        foregroundColor: const WidgetStatePropertyAll(ink),
-      ),
-    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: workspaceControlStyle),
     textButtonTheme: TextButtonThemeData(
       style: workspaceControlStyle.copyWith(
-        foregroundColor: const WidgetStatePropertyAll(ink),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
         side: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.focused)) {
             return const BorderSide(color: anthracite, width: 2);
@@ -121,8 +149,23 @@ ThemeData workspaceTheme() {
         }),
       ),
     ),
-    filledButtonTheme: const FilledButtonThemeData(
-      style: workspaceControlStyle,
+    filledButtonTheme: FilledButtonThemeData(
+      style: workspaceControlStyle.copyWith(
+        backgroundColor: const WidgetStatePropertyAll(anthracite),
+        foregroundColor: const WidgetStatePropertyAll(panel),
+        iconColor: const WidgetStatePropertyAll(panel),
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.focused)) {
+            return const BorderSide(color: accent, width: 2);
+          }
+          return BorderSide.none;
+        }),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: workspaceControlStyle.copyWith(
+        iconSize: const WidgetStatePropertyAll(20),
+      ),
     ),
   );
 }

@@ -1,11 +1,11 @@
 {
-    "name": "Calculador OEE",
+    "name": "Càlcul OEE",
     "short_name": "OEE",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Calculador OEE d'un torn.",
+    "background_color": "#F4F6F8",
+    "theme_color": "#1E242B",
+    "description": "Càlcul OEE i mapa ISA-95.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

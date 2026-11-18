@@ -34,7 +34,6 @@ class DataFoundationPage extends StatefulWidget {
   const DataFoundationPage({
     super.key,
     required this.repository,
-    this.onOpenOee,
     this.onOpenEngine,
     this.onOpenMap,
     this.exportJson,
@@ -42,7 +41,6 @@ class DataFoundationPage extends StatefulWidget {
   });
 
   final WorkspaceRepository repository;
-  final VoidCallback? onOpenOee;
   final VoidCallback? onOpenEngine;
   final VoidCallback? onOpenMap;
   final WorkspaceJsonExporter? exportJson;
@@ -157,17 +155,15 @@ class _DataFoundationPageState extends State<DataFoundationPage> {
       quotaExceeded: repository.quotaExceeded,
     );
     final actions = <Widget>[
-      if (widget.onOpenOee != null)
-        workspaceBarButton(
-          label: 'Calculador OEE',
-          onPressed: widget.onOpenOee,
-        ),
       if (widget.onOpenMap != null)
-        workspaceBarButton(label: 'Mapa ISA-95', onPressed: widget.onOpenMap),
+        workspaceBarButton(
+          label: 'Mapa ISA-95',
+          icon: Icons.account_tree,
+          onPressed: widget.onOpenMap,
+        ),
     ];
     return WorkspaceShell(
       current: WorkspaceSection.data,
-      onOpenCalculator: widget.onOpenOee,
       onOpenEngine: widget.onOpenEngine,
       onOpenMap: widget.onOpenMap,
       header: const WorkspaceHeader(title: 'Dades locals'),
